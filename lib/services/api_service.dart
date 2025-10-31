@@ -2,25 +2,34 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  final String _baseUrl =
-      'https://free-food-menus-api-production.up.railway.app';
+  // Base URL TheMealDB dan test key '1'
+  final String _baseUrl = 'https://www.themealdb.com/api/json/v1/1';
 
   Future<List<dynamic>> fetchMenu() async {
     try {
-      final response = await http.get(Uri.parse('$_baseUrl/menu'));
+      // Mengambil menu dari kategori "Dessert" sebagai contoh menu fast food/manisan
+      // Anda bisa ganti 'Dessert' dengan 'Chicken', 'Seafood', atau 'Beef'
+      final response = await http.get(
+        Uri.parse('$_baseUrl/filter.php?c=Dessert'),
+      );
 
       if (response.statusCode == 200) {
-        // API mengembalikan List<Map<String, dynamic>>
-        return json.decode(response.body);
+        final data = json.decode(response.body);
+
+        // TheMealDB mengembalikan data di bawah kunci 'meals'
+        if (data != null && data['meals'] is List) {
+          return data['meals'];
+        } else {
+          // Jika 'meals' kosong, kembalikan list kosong
+          return [];
+        }
       } else {
-        // Jika server mengembalikan error, lempar exception
         throw Exception(
           'Gagal mengambil menu. Status Code: ${response.statusCode}',
         );
       }
     } catch (e) {
-      // Menangani error koneksi atau parsing
-      throw Exception('Terjadi kesalahan: $e');
+      throw Exception('Terjadi kesalahan koneksi: $e');
     }
   }
 }

@@ -1,20 +1,30 @@
 import 'package:flutter/material.dart';
-import 'package:hive_flutter/hive_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:hive_flutter/hive_flutter.dart'; // Wajib: Hive Flutter
+import 'package:path_provider/path_provider.dart'; // Wajib: Path Provider
+import 'models/user_model.dart'; // Wajib: Import model Hive
 import 'pages/login_page.dart';
 import 'pages/register_page.dart';
 import 'pages/home_page.dart';
 
+// Definisi warna yang konsisten
+const Color accentColor = Color(0xFFFFB300);
+
+// Ganti main() menjadi async untuk inisialisasi Hive
 void main() async {
-  // Pastikan binding sudah siap sebelum memanggil native code (Hive)
+  // Pastikan binding Flutter sudah diinisialisasi
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Inisialisasi Hive
+  // --- INISIALISASI HIVE ---
+  // 1. Inisialisasi Hive
   await Hive.initFlutter();
 
-  // Buka Box untuk User data (key: email, value: data user)
-  await Hive.openBox('userBox');
-  // Buka Box untuk Session (key: isLoggedIn/userName, value: status/nama)
-  await Hive.openBox('sessionBox');
+  // 2. Daftarkan Adapter (dari user_model.g.dart)
+  // UserModelAdapter adalah nama yang dihasilkan oleh build_runner
+  Hive.registerAdapter(UserModelAdapter());
+
+  // 3. Buka Box yang menyimpan data pengguna (analogi tabel DB)
+  await Hive.openBox<UserModel>('userBox');
 
   runApp(const MyApp());
 }
@@ -22,36 +32,43 @@ void main() async {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // Session Check: Memeriksa status login dari Hive
-  Future<bool> _checkLoginStatus() async {
-    final sessionBox = Hive.box('sessionBox');
-    return sessionBox.get('isLoggedIn') ?? false;
-  }
-
   @override
   Widget build(BuildContext context) {
-    // Warna Aksen
-    final accentColor = const Color(0xFFFFB300);
-
     return MaterialApp(
       title: 'FastFood App TA',
+      debugShowCheckedModeBanner: false, // Opsional: menghilangkan banner debug
       theme: ThemeData(primarySwatch: Colors.brown, fontFamily: 'Roboto'),
-      // Cek status login di Hive saat aplikasi dimulai
+
+      // MENGATUR HOME PROPERTY UNTUK CEK SESI (SPLASH SCREEN LOGIC)
       home: FutureBuilder<bool>(
         future: _checkLoginStatus(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator(color: accentColor));
+            // Tampilkan CircularProgressIndicator saat menunggu SharedPreferences
+            return const Center(
+              child: CircularProgressIndicator(color: accentColor),
+            );
           }
-          // Jika sudah login, langsung ke HomePage, jika belum ke LoginPage
+          // Logika Penentu Rute Awal:
+          // Jika sudah login (true), arahkan ke HomePage. Jika belum, ke LoginPage.
           return snapshot.data == true ? const HomePage() : const LoginPage();
         },
       ),
-      // Definisikan routes lain (tidak menyertakan '/' karena sudah ada properti 'home')
+
+      // DEFINISI ROUTE BERNAMA
       routes: {
-        '/register': (context) => RegisterPage(),
+        // Rute yang dapat dipanggil dengan Navigator.pushNamed(context, '/register')
+        '/register': (context) => const RegisterPage(),
+        // Rute Home, untuk navigasi setelah login sukses
         '/home': (context) => const HomePage(),
       },
     );
+  }
+
+  // Fungsi Session Check: Memeriksa status login dari SharedPreferences
+  Future<bool> _checkLoginStatus() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('isLoggedIn') ??
+        false; // Default ke false jika belum ada
   }
 }

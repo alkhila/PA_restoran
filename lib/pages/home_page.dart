@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:hive_flutter/hive_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
+
+// --- DEFINISI WARNA (Konstanta Desain Coklat) ---
+const Color brownColor = Color(0xFF4E342E); // Coklat Tua
+const Color accentColor = Color(0xFFFFB300); // Oranye Aksen
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -16,58 +20,61 @@ class _HomePageState extends State<HomePage> {
 
   final ApiService _apiService = ApiService();
 
+  // DEKLARASI WIDGET OPTIONS (Diinisialisasi secara langsung/eager initialization)
+  // Perbaikan agar 'late' tidak menimbulkan error inisialisasi.
+  late final List<Widget> _widgetOptions;
+
   @override
   void initState() {
     super.initState();
     _loadUserInfo();
     _menuFuture = _apiService.fetchMenu();
+
+    // INISIALISASI _widgetOptions di dalam initState
+    _widgetOptions = <Widget>[
+      _buildMenuCatalog(),
+      _buildProfilePage(),
+      _buildCartPage(),
+    ];
   }
 
-  // Session Management: Memuat nama user dari Hive
+  // --- Session Management ---
   void _loadUserInfo() async {
-    final sessionBox = Hive.box('sessionBox');
+    final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _userName = sessionBox.get('userName') ?? 'FastFoodie';
+      _userName = prefs.getString('userName') ?? 'FastFoodie';
     });
   }
 
-  // Session Management: Logout menggunakan Hive
+  // Fungsi Logout (Memperbaiki Alur Navigasi ke Login)
   void _logout() async {
-    final sessionBox = Hive.box('sessionBox');
-    // Hapus data session
-    await sessionBox.put('isLoggedIn', false);
-    await sessionBox.delete('userName');
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isLoggedIn', false);
 
-    // Kembali ke halaman login dan hapus rute sebelumnya
-    Navigator.of(context).pushReplacementNamed('/');
+    // Navigasi ke root route ('/') dan HAPUS SEMUA route di stack.
+    // Ini memaksa FutureBuilder di main.dart berjalan ulang dan menampilkan LoginPage.
+    Navigator.of(
+      context,
+    ).pushNamedAndRemoveUntil('/', (Route<dynamic> route) => false);
   }
 
-  // Daftar Widget untuk Body Bottom Navigation Bar
-  late final List<Widget> _widgetOptions = <Widget>[
-    _buildMenuCatalog(),
-    _buildProfilePage(),
-    _buildCartPage(),
-  ];
-
-  // Widget untuk menampilkan Katalog Menu
+  // --- Widget 1: Katalog Menu (TheMealDB) ---
   Widget _buildMenuCatalog() {
-    final brownColor = const Color(0xFF4E342E);
-
     return FutureBuilder<List<dynamic>>(
       future: _menuFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(
-            child: CircularProgressIndicator(color: Color(0xFFFFB300)),
+            child: CircularProgressIndicator(color: accentColor),
           );
         } else if (snapshot.hasError) {
           return Center(
             child: Text(
               'Error: ${snapshot.error}',
-              style: TextStyle(color: brownColor),
+              style: const TextStyle(color: Colors.red),
             ),
           );
-        } else if (snapshot.hasData) {
+        } else if (snapshot.hasData && snapshot.data!.isNotEmpty) {
           final menuList = snapshot.data!;
           return GridView.builder(
             padding: const EdgeInsets.all(10),
@@ -88,18 +95,24 @@ class _HomePageState extends State<HomePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Gambar Menu (Kunci TheMealDB: 'strMealThumb')
                     Expanded(
                       child: ClipRRect(
                         borderRadius: const BorderRadius.vertical(
                           top: Radius.circular(10),
                         ),
                         child: Image.network(
-                          item['img'] ?? 'https://via.placeholder.com/150',
+                          item['strMealThumb'] ??
+                              'https://via.placeholder.com/150',
                           fit: BoxFit.cover,
                           width: double.infinity,
                           errorBuilder: (context, error, stackTrace) =>
                               const Center(
-                                child: Icon(Icons.broken_image, size: 50),
+                                child: Icon(
+                                  Icons.broken_image,
+                                  size: 50,
+                                  color: Colors.grey,
+                                ),
                               ),
                         ),
                       ),
@@ -107,8 +120,9 @@ class _HomePageState extends State<HomePage> {
                     Padding(
                       padding: const EdgeInsets.all(8.0),
                       child: Text(
-                        item['name'] ?? 'Nama Menu',
-                        style: TextStyle(
+                        item['strMeal'] ??
+                            'Nama Menu', // Kunci TheMealDB: 'strMeal'
+                        style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           color: brownColor,
                         ),
@@ -116,12 +130,12 @@ class _HomePageState extends State<HomePage> {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 8.0, bottom: 4.0),
+                    const Padding(
+                      padding: EdgeInsets.only(left: 8.0, bottom: 4.0),
                       child: Text(
-                        'Rp ${item['price']?.toString() ?? '?.?'}',
-                        style: const TextStyle(
-                          color: Color(0xFFFFB300),
+                        'Harga: N/A',
+                        style: TextStyle(
+                          color: accentColor,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -139,15 +153,19 @@ class _HomePageState extends State<HomePage> {
             },
           );
         } else {
-          return const Center(child: Text('Tidak ada menu yang tersedia.'));
+          return Center(
+            child: Text(
+              'Tidak ada menu yang tersedia.',
+              style: TextStyle(color: brownColor),
+            ),
+          );
         }
       },
     );
   }
 
-  // Widget untuk halaman Profil sesuai Syarat Tugas (Minimalis)
+  // --- Widget 2: Halaman Profil (Sesuai Syarat Tugas Akhir) ---
   Widget _buildProfilePage() {
-    final brownColor = const Color(0xFF4E342E);
     return Padding(
       padding: const EdgeInsets.all(20.0),
       child: Column(
@@ -156,52 +174,67 @@ class _HomePageState extends State<HomePage> {
           Center(
             child: Column(
               children: [
+                //
                 CircleAvatar(
                   radius: 50,
-                  backgroundColor: const Color(0xFFFFB300),
+                  backgroundColor: accentColor,
                   child: Text(
                     _userName.substring(0, 1),
-                    style: TextStyle(fontSize: 40, color: brownColor),
+                    style: const TextStyle(fontSize: 40, color: brownColor),
                   ),
                 ),
                 const SizedBox(height: 10),
                 Text(
                   _userName,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                     color: brownColor,
                   ),
                 ),
                 Text(
-                  'Pemrograman Aplikasi Mobile',
+                  'Mahasiswa Pemrograman Aplikasi Mobile',
                   style: TextStyle(color: brownColor.withOpacity(0.7)),
                 ),
               ],
             ),
           ),
           const Divider(height: 40),
-          Text(
-            'Menu Tugas Akhir',
+          const Text(
+            'Menu Profil',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
               color: brownColor,
             ),
           ),
+
+          // Menu Wajib Tugas Akhir
           ListTile(
-            leading: Icon(
+            leading: const Icon(Icons.menu_book, color: accentColor),
+            title: const Text('Materi Kuliah (Contoh menu tugas)'),
+            onTap: () {
+              /* TODO: Navigasi ke Materi */
+            },
+          ),
+          ListTile(
+            leading: const Icon(
               Icons.account_balance_wallet,
-              color: const Color(0xFFFFB300),
+              color: accentColor,
             ),
-            title: const Text('Konversi Mata Uang (3 Mata Uang)'),
-            onTap: () {},
+            title: const Text('Konversi Mata Uang (min. 3 mata uang)'),
+            onTap: () {
+              /* TODO: Navigasi ke Konversi Mata Uang */
+            },
           ),
           ListTile(
-            leading: Icon(Icons.access_time, color: const Color(0xFFFFB300)),
+            leading: const Icon(Icons.access_time, color: accentColor),
             title: const Text('Konversi Waktu (WIB, WITA, WIT, London)'),
-            onTap: () {},
+            onTap: () {
+              /* TODO: Navigasi ke Konversi Waktu */
+            },
           ),
+
           const Spacer(),
           ElevatedButton.icon(
             onPressed: _logout,
@@ -218,16 +251,20 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // --- Widget 3: Halaman Keranjang ---
   Widget _buildCartPage() {
-    return const Center(child: Text('Halaman Keranjang Anda'));
+    return Center(
+      child: Text(
+        'Halaman Keranjang Anda',
+        style: TextStyle(color: brownColor),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final brownColor = const Color(0xFF4E342E);
-    final accentColor = const Color(0xFFFFB300);
-
     return Scaffold(
+      backgroundColor: const Color(0xFFFFF8E1),
       appBar: AppBar(
         backgroundColor: brownColor,
         foregroundColor: Colors.white,
@@ -242,22 +279,18 @@ class _HomePageState extends State<HomePage> {
           ],
         ),
         actions: [
-          // Fasilitas Pencarian (Sesuai Syarat)
+          // Fasilitas Pencarian
           IconButton(
             icon: const Icon(Icons.search),
             onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Fungsi Pencarian dipanggil!')),
-              );
+              /* TODO */
             },
           ),
-          // Fasilitas Notifikasi (Sesuai Syarat)
+          // Fasilitas Notifikasi
           IconButton(
             icon: const Icon(Icons.notifications),
             onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Fungsi Notifikasi dipanggil!')),
-              );
+              /* TODO */
             },
           ),
         ],
@@ -267,20 +300,27 @@ class _HomePageState extends State<HomePage> {
       // Bottom Navigation Bar (Sesuai Syarat)
       bottomNavigationBar: BottomNavigationBar(
         items: <BottomNavigationBarItem>[
-          BottomNavigationBarItem(icon: const Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(
-            icon: const Icon(Icons.person), // Menu Profil
+            icon: const Icon(Icons.home),
+            label: 'Home',
+            backgroundColor: brownColor,
+          ),
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.person),
             label: 'Profil',
+            backgroundColor: brownColor,
           ),
           BottomNavigationBarItem(
             icon: const Icon(Icons.shopping_cart),
             label: 'Keranjang',
+            backgroundColor: brownColor,
           ),
         ],
         currentIndex: _selectedIndex,
         selectedItemColor: accentColor,
-        unselectedItemColor: brownColor.withOpacity(0.5),
-        backgroundColor: brownColor, // Background Bottom Nav Bar
+        unselectedItemColor: Colors.white70,
+        backgroundColor: brownColor,
+        type: BottomNavigationBarType.fixed,
         onTap: (index) {
           setState(() {
             _selectedIndex = index;
