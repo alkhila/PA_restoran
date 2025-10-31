@@ -6,25 +6,29 @@ import 'models/user_model.dart'; // Wajib: Import model Hive
 import 'pages/login_page.dart';
 import 'pages/register_page.dart';
 import 'pages/home_page.dart';
+import 'models/cart_item_model.dart';
 
 // Definisi warna yang konsisten
 const Color accentColor = Color(0xFFFFB300);
 
 // Ganti main() menjadi async untuk inisialisasi Hive
 void main() async {
-  // Pastikan binding Flutter sudah diinisialisasi
   WidgetsFlutterBinding.ensureInitialized();
 
   // --- INISIALISASI HIVE ---
   await Hive.initFlutter();
+
+  // 1. Daftarkan Adapter UserModel (sudah ada)
   Hive.registerAdapter(UserModelAdapter());
+  // 2. Daftarkan Adapter CartItemModel (BARU)
+  Hive.registerAdapter(CartItemModelAdapter());
 
-  // 3. Buka Box yang menyimpan data pengguna
+  // 3. Buka Box User (sudah ada)
   await Hive.openBox<UserModel>('userBox');
+  // 4. Buka Box Keranjang (BARU)
+  await Hive.openBox<CartItemModel>('cartBox');
 
-  // --- HAPUS BARIS INI JIKA ANDA SUDAH BERHASIL LOGIN/REGISTER SEKALI ---
-  await Hive.box<UserModel>('userBox').clear(); // HAPUS DATA LAMA/RUSAK
-  // ----------------------------------------------------------------------
+  // ... (Hapus baris .clear() jika sudah selesai debugging)
 
   runApp(const MyApp());
 }

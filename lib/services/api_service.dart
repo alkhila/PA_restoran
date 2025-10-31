@@ -14,6 +14,7 @@ class ApiService {
     List<String> foodCategories = ['Chicken', 'Beef'];
 
     try {
+      // --- 1. Ambil Makanan Berat/Junk Food (dan beri tag "Makanan") ---
       for (var category in foodCategories) {
         final response = await http.get(
           Uri.parse('$_baseUrl/filter.php?c=$category'),
@@ -23,7 +24,7 @@ class ApiService {
           final data = json.decode(response.body);
 
           if (data != null && data['meals'] is List) {
-            // Tambahkan tag kategori "Makanan" ke setiap item
+            // Memberi tag 'type': 'Makanan' pada setiap item
             List<Map<String, dynamic>> categorizedMeals =
                 (data['meals'] as List)
                     .map(
@@ -39,27 +40,27 @@ class ApiService {
         }
       }
 
-      // --- 2. Tambahkan Minuman (Statis) ---
+      // --- 2. Tambahkan Minuman (Statis dan beri tag "Minuman") ---
       allMeals.addAll([
         {
           "idMeal": "99901",
           "strMeal": "Coca-Cola Dingin",
           "strMealThumb":
-              "https://via.placeholder.com/150/f00000/ffffff?text=DRINK",
+              "assets/images/cola.jpg", // Ganti dengan nama file Anda
           "type": "Minuman",
         },
         {
           "idMeal": "99902",
           "strMeal": "Es Teh Manis Jumbo",
           "strMealThumb":
-              "https://via.placeholder.com/150/007700/ffffff?text=DRINK",
+              "assets/images/teh.jpg", // Ganti dengan nama file Anda
           "type": "Minuman",
         },
         {
           "idMeal": "99903",
           "strMeal": "Air Mineral Sehat",
           "strMealThumb":
-              "https://via.placeholder.com/150/ADD8E6/000000?text=WATER",
+              "assets/images/air_putih.png", // Ganti dengan nama file Anda
           "type": "Minuman",
         },
       ]);

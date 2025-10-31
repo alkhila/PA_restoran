@@ -3,6 +3,9 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
+// Import halaman-halaman baru
+import 'cart_page.dart';
+import 'detail_page.dart';
 
 // --- DEFINISI WARNA (Konstanta Desain Coklat) ---
 const Color brownColor = Color(0xFF4E342E); // Coklat Tua
@@ -27,21 +30,15 @@ class _HomePageState extends State<HomePage> {
 
   // State untuk Search dan Filter
   String _searchQuery = '';
-  MenuFilter _currentFilter = MenuFilter.all; // Default: Tampilkan semua
+  MenuFilter _currentFilter = MenuFilter.all;
 
-  late final List<Widget> _widgetOptions;
+  // Hapus deklarasi _widgetOptions dari sini (Inisialisasi dilakukan di build())
 
   @override
   void initState() {
     super.initState();
     _loadUserInfo();
     _menuFuture = _apiService.fetchMenu();
-
-    _widgetOptions = <Widget>[
-      _buildMenuCatalog(),
-      _buildProfilePage(),
-      _buildCartPage(),
-    ];
   }
 
   // --- Session Management ---
@@ -56,12 +53,13 @@ class _HomePageState extends State<HomePage> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('isLoggedIn', false);
 
+    // Kembali ke root dan hapus stack untuk memaksa login
     Navigator.of(
       context,
     ).pushNamedAndRemoveUntil('/', (Route<dynamic> route) => false);
   }
 
-  // --- Widget 1: Katalog Menu (Menerapkan Search & Filter) ---
+  // --- Widget 1: Katalog Menu (FIX CACHING & Fungsionalitas) ---
   Widget _buildMenuCatalog() {
     return Column(
       children: [
@@ -71,7 +69,7 @@ class _HomePageState extends State<HomePage> {
           child: TextField(
             onChanged: (value) {
               setState(() {
-                _searchQuery = value; // Mengubah state search query
+                _searchQuery = value; // Mengubah state search
               });
             },
             decoration: InputDecoration(
@@ -83,12 +81,12 @@ class _HomePageState extends State<HomePage> {
               ),
               filled: true,
               fillColor: Colors.grey.shade200,
-              contentPadding: EdgeInsets.symmetric(vertical: 0),
+              contentPadding: const EdgeInsets.symmetric(vertical: 0),
             ),
           ),
         ),
 
-        // --- Filter Chips ---
+        // --- Filter Chips (Kategori) ---
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10.0),
           child: Row(
@@ -122,14 +120,18 @@ class _HomePageState extends State<HomePage> {
                 final rawMenuList = snapshot.data!;
 
                 List<dynamic> filteredList = rawMenuList.where((item) {
-                  // Pengecekan Search (Nama Menu)
-                  final String itemName = item['strMeal']?.toLowerCase() ?? '';
+                  final Map<String, dynamic> itemMap =
+                      Map<String, dynamic>.from(item);
+
+                  // Pengecekan Search
+                  final String itemName =
+                      itemMap['strMeal']?.toLowerCase() ?? '';
                   final bool matchesSearch = itemName.contains(
                     _searchQuery.toLowerCase(),
                   );
 
-                  // Pengecekan Filter (Tipe Menu)
-                  final String itemType = item['type']?.toLowerCase() ?? '';
+                  // Pengecekan Filter
+                  final String itemType = itemMap['type']?.toLowerCase() ?? '';
                   bool matchesFilter = true;
 
                   if (_currentFilter == MenuFilter.makanan) {
@@ -138,7 +140,7 @@ class _HomePageState extends State<HomePage> {
                     matchesFilter = itemType == 'minuman';
                   }
 
-                  return matchesSearch && matchesFilter; // Keduanya harus True
+                  return matchesSearch && matchesFilter;
                 }).toList();
 
                 if (filteredList.isEmpty) {
@@ -161,6 +163,11 @@ class _HomePageState extends State<HomePage> {
                   itemCount: filteredList.length,
                   itemBuilder: (context, index) {
                     final item = filteredList[index];
+
+                    final isLocalAsset =
+                        (item['type'] == 'Minuman' &&
+                        (item['strMealThumb'] as String).startsWith('assets/'));
+
                     return Card(
                       elevation: 4,
                       shape: RoundedRectangleBorder(
@@ -174,20 +181,38 @@ class _HomePageState extends State<HomePage> {
                               borderRadius: const BorderRadius.vertical(
                                 top: Radius.circular(10),
                               ),
-                              child: Image.network(
-                                item['strMealThumb'] ??
-                                    'https://via.placeholder.com/150',
-                                fit: BoxFit.cover,
-                                width: double.infinity,
-                                errorBuilder: (context, error, stackTrace) =>
-                                    const Center(
-                                      child: Icon(
-                                        Icons.broken_image,
-                                        size: 50,
-                                        color: Colors.grey,
-                                      ),
+                              child: isLocalAsset
+                                  ? Image.asset(
+                                      // Gambar dari Aset Lokal
+                                      item['strMealThumb'],
+                                      fit: BoxFit.cover,
+                                      width: double.infinity,
+                                      errorBuilder:
+                                          (context, error, stackTrace) =>
+                                              const Center(
+                                                child: Icon(
+                                                  Icons.broken_image,
+                                                  size: 50,
+                                                  color: Colors.grey,
+                                                ),
+                                              ),
+                                    )
+                                  : Image.network(
+                                      // Gambar dari Jaringan
+                                      item['strMealThumb'] ??
+                                          'https://via.placeholder.com/150',
+                                      fit: BoxFit.cover,
+                                      width: double.infinity,
+                                      errorBuilder:
+                                          (context, error, stackTrace) =>
+                                              const Center(
+                                                child: Icon(
+                                                  Icons.broken_image,
+                                                  size: 50,
+                                                  color: Colors.grey,
+                                                ),
+                                              ),
                                     ),
-                              ),
                             ),
                           ),
                           Padding(
@@ -233,9 +258,22 @@ class _HomePageState extends State<HomePage> {
                                 right: 8.0,
                                 bottom: 8.0,
                               ),
-                              child: Icon(
-                                Icons.add_shopping_cart,
-                                color: brownColor,
+                              child: IconButton(
+                                // Navigasi ke Detail Menu
+                                icon: Icon(
+                                  Icons.add_shopping_cart,
+                                  color: brownColor,
+                                ),
+                                onPressed: () {
+                                  // Navigasi ke DetailPage (Membawa data item)
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          DetailPage(item: item),
+                                    ),
+                                  );
+                                },
                               ),
                             ),
                           ),
@@ -281,7 +319,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // --- Widget 2 & 3 (Profile & Cart) ---
+  // --- Widget 2: Halaman Profil ---
   Widget _buildProfilePage() {
     return Padding(
       padding: const EdgeInsets.all(20.0),
@@ -367,17 +405,21 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // --- Widget 3: Halaman Keranjang ---
   Widget _buildCartPage() {
-    return Center(
-      child: Text(
-        'Halaman Keranjang Anda',
-        style: TextStyle(color: brownColor),
-      ),
-    );
+    // Navigasi ke CartPage yang sebenarnya
+    return const CartPage();
   }
 
   @override
   Widget build(BuildContext context) {
+    // FIX CACHING: Definisikan list widget di sini, di dalam build()
+    final List<Widget> widgetOptions = <Widget>[
+      _buildMenuCatalog(), // Index 0: Memastikan selalu di-rebuild
+      _buildProfilePage(),
+      _buildCartPage(),
+    ];
+
     return Scaffold(
       backgroundColor: const Color(0xFFFFF8E1),
       appBar: AppBar(
@@ -397,14 +439,15 @@ class _HomePageState extends State<HomePage> {
           IconButton(
             icon: const Icon(Icons.search),
             onPressed: () {
-              // Ikon tetap ada, tetapi fungsi searching dipegang oleh TextField di body
+              // Ikon search di AppBar kini menjadi bagian dari visual Home Menu
             },
           ),
         ],
       ),
-      body: _widgetOptions.elementAt(_selectedIndex),
-
-      // Bottom Navigation Bar (tetap sama)
+      body: widgetOptions.elementAt(
+        _selectedIndex,
+      ), // Menggunakan list yang baru
+      // Bottom Navigation Bar
       bottomNavigationBar: BottomNavigationBar(
         items: <BottomNavigationBarItem>[
           BottomNavigationBarItem(
