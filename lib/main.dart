@@ -16,15 +16,15 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // --- INISIALISASI HIVE ---
-  // 1. Inisialisasi Hive
   await Hive.initFlutter();
-
-  // 2. Daftarkan Adapter (dari user_model.g.dart)
-  // UserModelAdapter adalah nama yang dihasilkan oleh build_runner
   Hive.registerAdapter(UserModelAdapter());
 
-  // 3. Buka Box yang menyimpan data pengguna (analogi tabel DB)
+  // 3. Buka Box yang menyimpan data pengguna
   await Hive.openBox<UserModel>('userBox');
+
+  // --- HAPUS BARIS INI JIKA ANDA SUDAH BERHASIL LOGIN/REGISTER SEKALI ---
+  await Hive.box<UserModel>('userBox').clear(); // HAPUS DATA LAMA/RUSAK
+  // ----------------------------------------------------------------------
 
   runApp(const MyApp());
 }

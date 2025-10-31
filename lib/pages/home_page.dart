@@ -1,3 +1,5 @@
+// File: lib/pages/home_page.dart
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
@@ -5,6 +7,9 @@ import '../services/api_service.dart';
 // --- DEFINISI WARNA (Konstanta Desain Coklat) ---
 const Color brownColor = Color(0xFF4E342E); // Coklat Tua
 const Color accentColor = Color(0xFFFFB300); // Oranye Aksen
+
+// Enum untuk opsi filter
+enum MenuFilter { all, makanan, minuman }
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -20,8 +25,10 @@ class _HomePageState extends State<HomePage> {
 
   final ApiService _apiService = ApiService();
 
-  // DEKLARASI WIDGET OPTIONS (Diinisialisasi secara langsung/eager initialization)
-  // Perbaikan agar 'late' tidak menimbulkan error inisialisasi.
+  // State untuk Search dan Filter
+  String _searchQuery = '';
+  MenuFilter _currentFilter = MenuFilter.all; // Default: Tampilkan semua
+
   late final List<Widget> _widgetOptions;
 
   @override
@@ -30,7 +37,6 @@ class _HomePageState extends State<HomePage> {
     _loadUserInfo();
     _menuFuture = _apiService.fetchMenu();
 
-    // INISIALISASI _widgetOptions di dalam initState
     _widgetOptions = <Widget>[
       _buildMenuCatalog(),
       _buildProfilePage(),
@@ -46,125 +52,236 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  // Fungsi Logout (Memperbaiki Alur Navigasi ke Login)
   void _logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('isLoggedIn', false);
 
-    // Navigasi ke root route ('/') dan HAPUS SEMUA route di stack.
-    // Ini memaksa FutureBuilder di main.dart berjalan ulang dan menampilkan LoginPage.
     Navigator.of(
       context,
     ).pushNamedAndRemoveUntil('/', (Route<dynamic> route) => false);
   }
 
-  // --- Widget 1: Katalog Menu (TheMealDB) ---
+  // --- Widget 1: Katalog Menu (Menerapkan Search & Filter) ---
   Widget _buildMenuCatalog() {
-    return FutureBuilder<List<dynamic>>(
-      future: _menuFuture,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
-            child: CircularProgressIndicator(color: accentColor),
-          );
-        } else if (snapshot.hasError) {
-          return Center(
-            child: Text(
-              'Error: ${snapshot.error}',
-              style: const TextStyle(color: Colors.red),
-            ),
-          );
-        } else if (snapshot.hasData && snapshot.data!.isNotEmpty) {
-          final menuList = snapshot.data!;
-          return GridView.builder(
-            padding: const EdgeInsets.all(10),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              childAspectRatio: 0.7,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-            ),
-            itemCount: menuList.length,
-            itemBuilder: (context, index) {
-              final item = menuList[index];
-              return Card(
-                elevation: 4,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Gambar Menu (Kunci TheMealDB: 'strMealThumb')
-                    Expanded(
-                      child: ClipRRect(
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(10),
-                        ),
-                        child: Image.network(
-                          item['strMealThumb'] ??
-                              'https://via.placeholder.com/150',
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          errorBuilder: (context, error, stackTrace) =>
-                              const Center(
-                                child: Icon(
-                                  Icons.broken_image,
-                                  size: 50,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                        ),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Text(
-                        item['strMeal'] ??
-                            'Nama Menu', // Kunci TheMealDB: 'strMeal'
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: brownColor,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const Padding(
-                      padding: EdgeInsets.only(left: 8.0, bottom: 4.0),
-                      child: Text(
-                        'Harga: N/A',
-                        style: TextStyle(
-                          color: accentColor,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: Padding(
-                        padding: const EdgeInsets.only(right: 8.0, bottom: 8.0),
-                        child: Icon(Icons.add_shopping_cart, color: brownColor),
-                      ),
-                    ),
-                  ],
-                ),
-              );
+    return Column(
+      children: [
+        // --- Search Bar ---
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+          child: TextField(
+            onChanged: (value) {
+              setState(() {
+                _searchQuery = value; // Mengubah state search query
+              });
             },
-          );
-        } else {
-          return Center(
-            child: Text(
-              'Tidak ada menu yang tersedia.',
-              style: TextStyle(color: brownColor),
+            decoration: InputDecoration(
+              hintText: "Cari menu...",
+              prefixIcon: Icon(Icons.search, color: brownColor),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide.none,
+              ),
+              filled: true,
+              fillColor: Colors.grey.shade200,
+              contentPadding: EdgeInsets.symmetric(vertical: 0),
             ),
-          );
-        }
-      },
+          ),
+        ),
+
+        // --- Filter Chips ---
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildFilterChip('Semua', MenuFilter.all),
+              _buildFilterChip('Makanan', MenuFilter.makanan),
+              _buildFilterChip('Minuman', MenuFilter.minuman),
+            ],
+          ),
+        ),
+
+        // --- Grid View Menu ---
+        Expanded(
+          child: FutureBuilder<List<dynamic>>(
+            future: _menuFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(
+                  child: CircularProgressIndicator(color: accentColor),
+                );
+              } else if (snapshot.hasError) {
+                return Center(
+                  child: Text(
+                    'Error: ${snapshot.error}',
+                    style: const TextStyle(color: Colors.red),
+                  ),
+                );
+              } else if (snapshot.hasData && snapshot.data!.isNotEmpty) {
+                // --- Logika Filtering dan Searching ---
+                final rawMenuList = snapshot.data!;
+
+                List<dynamic> filteredList = rawMenuList.where((item) {
+                  // Pengecekan Search (Nama Menu)
+                  final String itemName = item['strMeal']?.toLowerCase() ?? '';
+                  final bool matchesSearch = itemName.contains(
+                    _searchQuery.toLowerCase(),
+                  );
+
+                  // Pengecekan Filter (Tipe Menu)
+                  final String itemType = item['type']?.toLowerCase() ?? '';
+                  bool matchesFilter = true;
+
+                  if (_currentFilter == MenuFilter.makanan) {
+                    matchesFilter = itemType == 'makanan';
+                  } else if (_currentFilter == MenuFilter.minuman) {
+                    matchesFilter = itemType == 'minuman';
+                  }
+
+                  return matchesSearch && matchesFilter; // Keduanya harus True
+                }).toList();
+
+                if (filteredList.isEmpty) {
+                  return Center(
+                    child: Text(
+                      'Menu tidak ditemukan.',
+                      style: TextStyle(color: brownColor),
+                    ),
+                  );
+                }
+
+                return GridView.builder(
+                  padding: const EdgeInsets.all(10),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    childAspectRatio: 0.7,
+                    crossAxisSpacing: 10,
+                    mainAxisSpacing: 10,
+                  ),
+                  itemCount: filteredList.length,
+                  itemBuilder: (context, index) {
+                    final item = filteredList[index];
+                    return Card(
+                      elevation: 4,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: ClipRRect(
+                              borderRadius: const BorderRadius.vertical(
+                                top: Radius.circular(10),
+                              ),
+                              child: Image.network(
+                                item['strMealThumb'] ??
+                                    'https://via.placeholder.com/150',
+                                fit: BoxFit.cover,
+                                width: double.infinity,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    const Center(
+                                      child: Icon(
+                                        Icons.broken_image,
+                                        size: 50,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                              ),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Text(
+                              item['strMeal'] ?? 'Nama Menu',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: brownColor,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.only(
+                              left: 8.0,
+                              bottom: 4.0,
+                            ),
+                            child: Text(
+                              'Tipe: ${item['type'] ?? 'N/A'}',
+                              style: const TextStyle(
+                                color: accentColor,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.only(left: 8.0, bottom: 4.0),
+                            child: Text(
+                              'Harga: N/A',
+                              style: TextStyle(
+                                color: accentColor,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: Padding(
+                              padding: const EdgeInsets.only(
+                                right: 8.0,
+                                bottom: 8.0,
+                              ),
+                              child: Icon(
+                                Icons.add_shopping_cart,
+                                color: brownColor,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                );
+              } else {
+                return Center(
+                  child: Text(
+                    'Tidak ada menu yang tersedia.',
+                    style: TextStyle(color: brownColor),
+                  ),
+                );
+              }
+            },
+          ),
+        ),
+      ],
     );
   }
 
-  // --- Widget 2: Halaman Profil (Sesuai Syarat Tugas Akhir) ---
+  // Widget pembantu untuk Filter Chip
+  Widget _buildFilterChip(String label, MenuFilter filter) {
+    bool isSelected = _currentFilter == filter;
+    return ChoiceChip(
+      label: Text(label),
+      selected: isSelected,
+      selectedColor: accentColor.withOpacity(0.8),
+      onSelected: (selected) {
+        if (selected) {
+          setState(() {
+            _currentFilter = filter; // Mengubah state filter
+          });
+        }
+      },
+      labelStyle: TextStyle(
+        color: isSelected ? brownColor : Colors.black87,
+        fontWeight: FontWeight.bold,
+      ),
+      backgroundColor: Colors.grey.shade100,
+    );
+  }
+
+  // --- Widget 2 & 3 (Profile & Cart) ---
   Widget _buildProfilePage() {
     return Padding(
       padding: const EdgeInsets.all(20.0),
@@ -174,7 +291,6 @@ class _HomePageState extends State<HomePage> {
           Center(
             child: Column(
               children: [
-                //
                 CircleAvatar(
                   radius: 50,
                   backgroundColor: accentColor,
@@ -251,7 +367,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // --- Widget 3: Halaman Keranjang ---
   Widget _buildCartPage() {
     return Center(
       child: Text(
@@ -279,25 +394,17 @@ class _HomePageState extends State<HomePage> {
           ],
         ),
         actions: [
-          // Fasilitas Pencarian
           IconButton(
             icon: const Icon(Icons.search),
             onPressed: () {
-              /* TODO */
-            },
-          ),
-          // Fasilitas Notifikasi
-          IconButton(
-            icon: const Icon(Icons.notifications),
-            onPressed: () {
-              /* TODO */
+              // Ikon tetap ada, tetapi fungsi searching dipegang oleh TextField di body
             },
           ),
         ],
       ),
       body: _widgetOptions.elementAt(_selectedIndex),
 
-      // Bottom Navigation Bar (Sesuai Syarat)
+      // Bottom Navigation Bar (tetap sama)
       bottomNavigationBar: BottomNavigationBar(
         items: <BottomNavigationBarItem>[
           BottomNavigationBarItem(
