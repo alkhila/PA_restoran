@@ -2,7 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import '../models/user_model.dart'; // Import UserModel
+import '../models/user_model.dart';
 
 // Definisi warna yang konsisten
 const Color brownColor = Color(0xFF4E342E);
@@ -22,22 +22,44 @@ class _RegisterPageState extends State<RegisterPage> {
   final TextEditingController _confirmPasswordController =
       TextEditingController();
 
+  // Tambahkan State untuk Loading
+  bool _isLoading = false;
+
   void _register() async {
-    final String name = _nameController.text;
-    final String email = _emailController.text;
+    // 1. Aktifkan Loading
+    setState(() {
+      _isLoading = true;
+    });
+
+    final String name = _nameController.text.trim();
+    final String email = _emailController.text.trim();
     final String password = _passwordController.text;
     final String confirmPassword = _confirmPasswordController.text;
 
+    // --- Cek Validasi Input Kosong ---
+    if (name.isEmpty ||
+        email.isEmpty ||
+        password.isEmpty ||
+        confirmPassword.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Semua kolom harus diisi!')));
+      setState(() => _isLoading = false); // Matikan loading
+      return;
+    }
+
+    // --- Cek Konfirmasi Password ---
     if (password != confirmPassword) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Kata Sandi dan Konfirmasi Kata Sandi tidak cocok!'),
         ),
       );
+      setState(() => _isLoading = false); // Matikan loading
       return;
     }
 
-    // Cek apakah email sudah terdaftar
+    // --- Cek Duplikasi Email ---
     final userBox = Hive.box<UserModel>('userBox');
     if (userBox.values.any((user) => user.email == email)) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -47,17 +69,24 @@ class _RegisterPageState extends State<RegisterPage> {
           ),
         ),
       );
+      setState(() => _isLoading = false); // Matikan loading
       return;
     }
 
     // --- SIMPAN PENGGUNA BARU KE HIVE ---
     final newUser = UserModel(email: email, password: password, username: name);
-    await userBox.add(newUser); // Simpan data pengguna baru
+    await userBox.add(newUser);
 
+    // Pendaftaran Sukses
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Pendaftaran sukses! Silakan Masuk.')),
     );
-    Navigator.pop(context); // Kembali ke halaman Login
+
+    // 2. Matikan Loading sebelum navigasi
+    setState(() => _isLoading = false);
+
+    // 3. Navigasi kembali ke halaman Login
+    Navigator.pop(context);
   }
 
   @override
@@ -105,7 +134,7 @@ class _RegisterPageState extends State<RegisterPage> {
               controller: _passwordController,
               obscureText: true,
               decoration: InputDecoration(
-                labelText: 'Kata Sandi (Tanpa Enkripsi - Untuk Contoh TA)',
+                labelText: 'Kata Sandi',
                 border: const OutlineInputBorder(),
                 prefixIcon: Icon(Icons.lock, color: accentColor),
               ),
@@ -121,8 +150,12 @@ class _RegisterPageState extends State<RegisterPage> {
               ),
             ),
             const SizedBox(height: 30),
+
+            // Tombol Daftar dengan Loading Indicator
             ElevatedButton(
-              onPressed: _register,
+              onPressed: _isLoading
+                  ? null
+                  : _register, // Tombol disable saat loading
               style: ElevatedButton.styleFrom(
                 backgroundColor: accentColor,
                 foregroundColor: brownColor,
@@ -131,11 +164,24 @@ class _RegisterPageState extends State<RegisterPage> {
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              child: const Text(
-                'Daftar',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
+              child: _isLoading
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        color: brownColor,
+                        strokeWidth: 3,
+                      ),
+                    )
+                  : const Text(
+                      'Daftar',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
             ),
+
             const SizedBox(height: 20),
             TextButton(
               onPressed: () {
