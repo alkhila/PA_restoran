@@ -7,6 +7,7 @@ import 'pages/login_page.dart';
 import 'pages/register_page.dart';
 import 'pages/home_page.dart';
 import 'models/cart_item_model.dart';
+import 'models/purchase_history_model.dart';
 
 // Definisi warna yang konsisten
 const Color accentColor = Color(0xFFFFB300);
@@ -14,21 +15,17 @@ const Color accentColor = Color(0xFFFFB300);
 // Ganti main() menjadi async untuk inisialisasi Hive
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // --- INISIALISASI HIVE ---
   await Hive.initFlutter();
 
-  // 1. Daftarkan Adapter UserModel (sudah ada)
+  // Daftarkan Adapter
   Hive.registerAdapter(UserModelAdapter());
-  // 2. Daftarkan Adapter CartItemModel (BARU)
   Hive.registerAdapter(CartItemModelAdapter());
+  Hive.registerAdapter(PurchaseHistoryModelAdapter()); // BARU
 
-  // 3. Buka Box User (sudah ada)
+  // Buka Box
   await Hive.openBox<UserModel>('userBox');
-  // 4. Buka Box Keranjang (BARU)
   await Hive.openBox<CartItemModel>('cartBox');
-
-  // ... (Hapus baris .clear() jika sudah selesai debugging)
+  await Hive.openBox<PurchaseHistoryModel>('historyBox'); // BARU
 
   runApp(const MyApp());
 }

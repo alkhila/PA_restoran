@@ -95,7 +95,7 @@ class CartPage extends StatelessWidget {
                               totalPrice: totalPrice,
                               items: items,
                             ),
-                          ),
+                          ), // <-- PERUBAHAN DI SINI
                         );
                       },
                       icon: const Icon(Icons.arrow_forward),
