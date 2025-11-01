@@ -1,25 +1,25 @@
-// File: lib/pages/checkout_detail_page.dart
+// File: lib/pages/checkout_detail_page.dart (FINAL)
 
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:intl/intl.dart'; // Wajib: Tambahkan dependency: intl di pubspec.yaml
+import 'package:intl/intl.dart';
+import 'package:geolocator/geolocator.dart'; // Wajib jika menggunakan LBS
 import '../models/cart_item_model.dart';
 import '../models/purchase_history_model.dart';
-import '../services/currency_service.dart'; // Wajib: File service mata uang
-import 'cart_page.dart'; // Import CartPage untuk memuat ulang keranjang
+import '../services/currency_service.dart';
+import '../services/location_service.dart';
 
 const Color brownColor = Color(0xFF4E342E);
 const Color accentColor = Color(0xFFFFB300);
 
 // ======================================================
-// Halaman Struk Pembayaran (Riwayat Pembelian)
+// Halaman Struk Pembayaran / Riwayat Pembelian (Class ReceiptPage)
 // ======================================================
 class ReceiptPage extends StatelessWidget {
   const ReceiptPage({super.key});
 
-  // Navigasi yang kembali ke Home Page (dan membersihkan stack)
   void _backToHome(BuildContext context) async {
-    // Kembali ke /home (root app) dan hapus semua rute di atasnya
+    // Navigasi kembali ke Home Page (dan membersihkan stack)
     Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
   }
 
@@ -29,9 +29,8 @@ class ReceiptPage extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Riwayat Pembelian'),
         backgroundColor: brownColor,
-        automaticallyImplyLeading: false, // Jangan tampilkan tombol back
+        automaticallyImplyLeading: false,
       ),
-      // Memantau historyBox untuk menampilkan riwayat
       body: ValueListenableBuilder(
         valueListenable: Hive.box<PurchaseHistoryModel>(
           'historyBox',
@@ -84,11 +83,18 @@ class ReceiptPage extends StatelessWidget {
                         ),
                       ),
                       const Divider(height: 15),
-                      // Tampilkan Detil Item yang Dibeli
+                      Text(
+                        'Detil Item:',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: brownColor,
+                        ),
+                      ),
+                      // Detil item yang dibeli
                       ...record.items
                           .map(
                             (item) =>
-                                Text('${item.strMeal} (${item.quantity}x)'),
+                                Text('- ${item.strMeal} (${item.quantity}x)'),
                           )
                           .toList(),
                     ],
@@ -99,7 +105,6 @@ class ReceiptPage extends StatelessWidget {
           );
         },
       ),
-      // Tombol Struk Kembali ke Home (Sesuai Permintaan)
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _backToHome(context),
         label: const Text('Kembali ke Home'),
@@ -112,7 +117,7 @@ class ReceiptPage extends StatelessWidget {
 }
 
 // ======================================================
-// Halaman Detail Pembelian (Checkout Detail) - Dengan Konverter
+// Halaman Detail Pembelian (Checkout Detail)
 // ======================================================
 class CheckoutDetailPage extends StatefulWidget {
   final double totalPrice;
@@ -130,61 +135,88 @@ class CheckoutDetailPage extends StatefulWidget {
 
 class _CheckoutDetailPageState extends State<CheckoutDetailPage> {
   final CurrencyService _currencyService = CurrencyService();
-  late Future<Map<String, double>> _ratesFuture;
+  final LocationService _locationService = LocationService();
 
-  String _targetCurrency = 'IDR'; // Default ke IDR
+  // State Lokasi & Mata Uang
+  late Future<Map<String, double>> _ratesFuture;
+  bool _isLocating = true;
+  String _targetCurrency = 'IDR';
   double _convertedAmount = 0.0;
+  String _locationStatus = 'Menentukan mata uang default...';
 
   @override
   void initState() {
     super.initState();
     _ratesFuture = _currencyService.getExchangeRates();
     _convertedAmount = widget.totalPrice;
+    _determineDefaultCurrency(); // Mulai pelacakan lokasi
   }
 
-  // Fungsi Konversi Mata Uang
-  void _convertCurrency(Map<String, double> rates) {
-    // Logika Konversi (Base IDR)
-    if (rates.containsKey(_targetCurrency)) {
-      final rateToTarget = rates[_targetCurrency]!; // Rate dari IDR ke Target
+  void _determineDefaultCurrency() async {
+    try {
+      final position = await _locationService.getCurrentPosition();
+      final locationData = await _locationService.getCountryCode(
+        position.latitude,
+        position.longitude,
+      );
+
+      final countryCode = locationData['code']!;
+      final countryName = locationData['name']!;
+
+      final defaultCurrency = _currencyService.getDefaultCurrency(countryCode);
+
       setState(() {
-        // Konversi: Total IDR * Rate IDR ke Target
-        _convertedAmount = widget.totalPrice * rateToTarget;
+        _isLocating = false;
+        _targetCurrency = defaultCurrency;
+        _locationStatus = 'Default Mata Uang: $defaultCurrency ($countryName).';
+
+        _ratesFuture.then((rates) {
+          _convertCurrency(rates);
+        });
+      });
+    } catch (e) {
+      setState(() {
+        _isLocating = false;
+        _targetCurrency = 'IDR'; // Default ke IDR jika ada error lokasi
+        _locationStatus =
+            'Gagal melacak lokasi. Default: IDR. Error: ${e.toString()}';
+
+        _ratesFuture.then((rates) {
+          _convertCurrency(rates);
+        });
       });
     }
   }
 
-  // Fungsi Pembayaran dan Penyimpanan Riwayat
-  void _handlePayment() async {
-    // Cek apakah keranjang kosong (pencegahan double checkout)
-    if (widget.items.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Keranjang kosong! Tidak ada yang bisa dibayar.'),
-        ),
-      );
-      return;
-    }
+  void _convertCurrency(Map<String, double> rates) {
+    if (rates.containsKey(_targetCurrency)) {
+      final double targetRate = rates[_targetCurrency]!;
 
+      setState(() {
+        // Konversi: Total IDR * Rate IDR ke Mata Uang Target
+        _convertedAmount = widget.totalPrice * targetRate;
+      });
+    }
+  }
+
+  void _handlePayment() async {
     // 1. Simpan Riwayat Pembelian
     final historyBox = Hive.box<PurchaseHistoryModel>('historyBox');
 
     final newRecord = PurchaseHistoryModel(
       finalPrice: _convertedAmount,
       currency: _targetCurrency,
-      purchaseTime: DateTime.now(), // Waktu pembelian
+      purchaseTime: DateTime.now(), // Waktu pembayaran ditekan
       items: widget.items.toList(),
     );
     await historyBox.add(newRecord);
 
-    // 2. Bersihkan Keranjang (CartBox)
+    // 2. Bersihkan Keranjang
     await Hive.box<CartItemModel>('cartBox').clear();
 
     // 3. Navigasi ke Halaman Struk/Riwayat Pembelian
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (context) => const ReceiptPage(),
-      ), // <-- Menuju halaman struk
+      MaterialPageRoute(builder: (context) => const ReceiptPage()),
     );
   }
 
@@ -199,47 +231,50 @@ class _CheckoutDetailPageState extends State<CheckoutDetailPage> {
       body: FutureBuilder<Map<String, double>>(
         future: _ratesFuture,
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(color: accentColor),
+          if (snapshot.connectionState == ConnectionState.waiting ||
+              _isLocating) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const CircularProgressIndicator(color: accentColor),
+                  const SizedBox(height: 10),
+                  Text(_locationStatus, style: TextStyle(color: brownColor)),
+                ],
+              ),
             );
           } else if (snapshot.hasError) {
             return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Text(
-                  'Gagal memuat rate mata uang. Tampilkan default IDR. Error: ${snapshot.error}',
-                  style: const TextStyle(color: Colors.red),
-                ),
+              child: Text(
+                'Gagal memuat rate mata uang: ${snapshot.error}',
+                style: const TextStyle(color: Colors.red),
               ),
             );
           } else if (snapshot.hasData) {
             final rates = snapshot.data!;
-
-            // Konversi awal ke IDR saat data rates tersedia
-            if (_convertedAmount == widget.totalPrice &&
-                _targetCurrency == 'IDR') {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                _convertCurrency(rates);
-              });
-            }
+            final currencyList = rates.keys.toList();
 
             return Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Status Lokasi/Mata Uang Default
                   Text(
-                    'Ringkasan Pesanan:',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: brownColor,
-                    ),
+                    'Status Konversi: $_locationStatus',
+                    style: const TextStyle(fontSize: 12, color: Colors.blue),
                   ),
                   const SizedBox(height: 10),
 
                   // Daftar item
+                  Text(
+                    'Ringkasan Pesanan:',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: brownColor,
+                    ),
+                  ),
                   Expanded(
                     child: ListView.builder(
                       itemCount: widget.items.length,
@@ -255,29 +290,24 @@ class _CheckoutDetailPageState extends State<CheckoutDetailPage> {
 
                   // --- Konversi Mata Uang ---
                   Text(
-                    'Konversi Pembayaran:',
+                    'Konversi Mata Uang:',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                       color: brownColor,
                     ),
                   ),
+
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Konversi ke:',
-                        style: TextStyle(fontSize: 16),
-                      ),
+                      // Pilihan Dropdown Mata Uang
+                      const Text('Ganti Mata Uang: '),
                       DropdownButton<String>(
                         value: _targetCurrency,
-                        items: rates.keys.map((String currency) {
+                        items: currencyList.map((String currency) {
                           return DropdownMenuItem<String>(
                             value: currency,
-                            child: Text(
-                              currency,
-                              style: TextStyle(color: brownColor),
-                            ),
+                            child: Text(currency),
                           );
                         }).toList(),
                         onChanged: (String? newValue) {
@@ -293,20 +323,13 @@ class _CheckoutDetailPageState extends State<CheckoutDetailPage> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 25),
+                  const SizedBox(height: 15),
 
                   // --- Total Akhir ---
                   Text(
-                    'Total Bayar Akhir:',
-                    style: TextStyle(
-                      fontSize: 18,
-                      color: brownColor.withOpacity(0.8),
-                    ),
-                  ),
-                  Text(
-                    '$_targetCurrency ${NumberFormat.currency(locale: 'en_US', symbol: '').format(_convertedAmount)}',
+                    'Total Bayar Akhir: $_targetCurrency ${_convertedAmount.toStringAsFixed(2)}',
                     style: const TextStyle(
-                      fontSize: 32,
+                      fontSize: 22,
                       fontWeight: FontWeight.bold,
                       color: accentColor,
                     ),

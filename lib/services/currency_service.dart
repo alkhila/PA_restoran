@@ -3,21 +3,24 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-// Data dari ExchangeRate-API (menggunakan base currency USD untuk Free Plan)
 class CurrencyService {
-  // Anda bisa ganti dengan API Key jika menggunakan paket berbayar,
-  // tetapi untuk contoh, kita gunakan endpoint gratis yang diperbolehkan
   static const String _baseUrl =
       'https://api.exchangerate-api.com/v4/latest/IDR';
 
-  // Daftar mata uang wajib dan umum
-  final List<String> supportedCurrencies = [
-    'IDR', // Rupiah Indonesia
-    'USD', // Dollar Amerika
-    'EUR', // Euro
-    'JPY', // Yen Jepang
-  ];
+  // --- PEMETAAN NEGARA KE MATA UANG ---
+  final Map<String, String> countryToCurrency = {
+    'ID': 'IDR',
+    'US': 'USD',
+    'EU': 'EUR', // Kode ISO untuk Eurozone
+    'GB': 'GBP', // Poundsterling
+    'JP': 'JPY',
+    // ... bisa ditambahkan negara lain
+  };
 
+  // Daftar mata uang yang didukung (Wajib ada IDR, USD, EUR, JPY)
+  final List<String> supportedCurrencies = ['IDR', 'USD', 'EUR', 'JPY'];
+
+  // FUNGSI UTAMA UNTUK MENDAPATKAN RATE
   Future<Map<String, double>> getExchangeRates() async {
     try {
       final response = await http.get(Uri.parse(_baseUrl));
@@ -26,11 +29,9 @@ class CurrencyService {
         final data = json.decode(response.body);
         final rates = data['rates'] as Map<String, dynamic>;
 
-        // Filter rates yang hanya didukung
         Map<String, double> filteredRates = {};
         for (var code in supportedCurrencies) {
           if (rates.containsKey(code)) {
-            // Karena API ini berbasis IDR, 1 IDR = X (Mata uang lain)
             filteredRates[code] = rates[code].toDouble();
           }
         }
@@ -41,5 +42,11 @@ class CurrencyService {
     } catch (e) {
       throw Exception('Kesalahan koneksi saat memuat rate: $e');
     }
+  }
+
+  // FUNGSI BARU: Mendapatkan Currency Default dari Country Code
+  String getDefaultCurrency(String countryCode) {
+    // Menggunakan pemetaan; jika tidak ditemukan, default ke IDR
+    return countryToCurrency[countryCode] ?? 'IDR';
   }
 }

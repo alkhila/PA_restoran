@@ -6,17 +6,13 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 
 class LocationService {
-  // Nominatim OpenStreetMap Reverse Geocoding API
   static const String _nominatimBaseUrl =
       'https://nominatim.openstreetmap.org/reverse';
 
-  // Header Wajib (sesuai kebijakan Nominatim)
   static const Map<String, String> _headers = {
-    // Ganti dengan User-Agent yang unik (wajib)
     'User-Agent': 'FastFoodApp/1.0 (contact@pa-restoran.com)',
   };
 
-  // 1. Dapatkan Koordinat Saat Ini (Termasuk Cek Izin)
   Future<Position> getCurrentPosition() async {
     bool serviceEnabled;
     LocationPermission permission;
@@ -45,8 +41,8 @@ class LocationService {
     );
   }
 
-  // 2. Konversi Koordinat ke Alamat (Reverse Geocoding)
-  Future<String> getAddressFromCoordinates(
+  // --- FUNGSI BARU: Mendapatkan Alamat LENGKAP DAN KODE NEGARA ---
+  Future<Map<String, String>> getCountryCode(
     double latitude,
     double longitude,
   ) async {
@@ -60,18 +56,53 @@ class LocationService {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
 
-        // Nominatim mengembalikan 'display_name' sebagai alamat lengkap
-        if (data != null && data['display_name'] != null) {
-          return data['display_name'] as String;
+        if (data != null &&
+            data['address'] != null &&
+            data['address']['country_code'] != null) {
+          final countryCode = data['address']['country_code']
+              .toString()
+              .toUpperCase();
+          final countryName = data['address']['country'].toString();
+
+          return {'code': countryCode, 'name': countryName};
         } else {
-          return 'Alamat tidak ditemukan.';
+          return {
+            'code': 'ID',
+            'name': 'Indonesia (Default)',
+          }; // Default jika gagal
         }
       } else {
-        debugPrint('Nominatim API error: ${response.statusCode}');
+        return {
+          'code': 'ID',
+          'name': 'Indonesia (API Error)',
+        }; // Default jika API error
+      }
+    } catch (e) {
+      return {
+        'code': 'ID',
+        'name': 'Indonesia (Koneksi Error)',
+      }; // Default jika koneksi error
+    }
+  }
+
+  // FUNGSI getAddressFromCoordinates (digunakan di halaman profil) tetap ada
+  Future<String> getAddressFromCoordinates(
+    double latitude,
+    double longitude,
+  ) async {
+    // ... (gunakan kode yang sudah Anda miliki untuk menampilkan alamat lengkap)
+    try {
+      final url = Uri.parse(
+        '$_nominatimBaseUrl?lat=$latitude&lon=$longitude&format=jsonv2',
+      );
+      final response = await http.get(url, headers: _headers);
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['display_name'] as String;
+      } else {
         return 'Gagal memuat alamat (Status: ${response.statusCode})';
       }
     } catch (e) {
-      debugPrint('Error Reverse Geocoding: $e');
       return 'Kesalahan koneksi saat melacak lokasi.';
     }
   }
