@@ -59,9 +59,8 @@ class MyApp extends StatelessWidget {
 
       // DEFINISI ROUTE BERNAMA
       routes: {
-        // Rute yang dapat dipanggil dengan Navigator.pushNamed(context, '/register')
+        '/login': (context) => const LoginPage(),
         '/register': (context) => const RegisterPage(),
-        // Rute Home, untuk navigasi setelah login sukses
         '/home': (context) => const HomePage(),
       },
     );

@@ -1,11 +1,10 @@
-// File: lib/pages/home_page.dart (LENGKAP)
+// File: lib/pages/home_page.dart
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:intl/intl.dart'; // Wajib: Untuk format waktu
-import 'time_converter_page.dart'; // Import halaman Time Converter
+import 'package:intl/intl.dart';
+import 'time_converter_page.dart';
 import '../services/api_service.dart';
-import '../services/time_service.dart'; // Import service waktu
 import 'cart_page.dart';
 import 'detail_page.dart';
 
@@ -29,33 +28,16 @@ class _HomePageState extends State<HomePage> {
   late Future<List<dynamic>> _menuFuture;
 
   final ApiService _apiService = ApiService();
-  final TimeService _timeService = TimeService(); // Inisialisasi TimeService
 
   // State untuk Search dan Filter
   String _searchQuery = '';
   MenuFilter _currentFilter = MenuFilter.all;
-
-  // State untuk Konversi Waktu
-  String _currentTimezoneDisplay = 'WIB (Jakarta)';
-  String _currentConvertedTime = 'Memuat waktu...';
-
-  // Hapus deklarasi _widgetOptions dari sini
 
   @override
   void initState() {
     super.initState();
     _loadUserInfo();
     _menuFuture = _apiService.fetchMenu();
-    // Panggil fungsi konversi waktu saat initState
-    _updateConvertedTime(_timeService.timeZones[_currentTimezoneDisplay]!);
-  }
-
-  // Fungsi untuk memuat dan menampilkan waktu
-  void _updateConvertedTime(String timezoneEndpoint) async {
-    final time = await _timeService.fetchTime(timezoneEndpoint);
-    setState(() {
-      _currentConvertedTime = time;
-    });
   }
 
   // --- Session Management ---
@@ -72,17 +54,12 @@ class _HomePageState extends State<HomePage> {
 
     Navigator.of(
       context,
-    ).pushNamedAndRemoveUntil('/', (Route<dynamic> route) => false);
+    ).pushNamedAndRemoveUntil('/login', (Route<dynamic> route) => false);
   }
 
   // --- Widget 1: Katalog Menu ---
   Widget _buildMenuCatalog() {
-    // ... (Kode _buildMenuCatalog() tetap sama dengan yang terakhir diperbaiki)
-    // ...
-    // [Keterangan: Karena kode ini sangat panjang, saya biarkan Anda menggunakan kode yang sudah ada,
-    // tetapi asumsikan kode ini sudah benar dari respons sebelumnya]
-    // ...
-
+    // ... (Kode _buildMenuCatalog() tetap sama, tidak ditampilkan di sini karena panjang)
     return Column(
       children: [
         // --- Search Bar ---
@@ -302,7 +279,7 @@ class _HomePageState extends State<HomePage> {
       onSelected: (selected) {
         if (selected) {
           setState(() {
-            _currentFilter = filter;
+            _currentFilter = filter; // Mengubah state filter
           });
         }
       },
@@ -314,18 +291,20 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // --- Widget 2: Halaman Profil (Revisi Total) ---
+  // --- Widget 2: Halaman Profil (FINAL) ---
   Widget _buildProfilePage() {
     return Padding(
       padding: const EdgeInsets.all(20.0),
+      // PERBAIKAN: SingleChildScrollView diperlukan agar konten tidak overflow
       child: SingleChildScrollView(
+        // Tambahkan Column di sini untuk menahan semua konten
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Center(
               child: Column(
                 children: [
-                  // 1. Foto dengan Path alza.jpg
+                  // 1. Foto dengan Path
                   Container(
                     width: 100,
                     height: 100,
@@ -335,7 +314,7 @@ class _HomePageState extends State<HomePage> {
                     ),
                     child: ClipOval(
                       child: Image.asset(
-                        'assets/images/alza.jpg', // Ganti dengan path file Anda
+                        'assets/images/alza.jpg',
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) =>
                             Icon(Icons.person, size: 60, color: brownColor),
@@ -361,9 +340,42 @@ class _HomePageState extends State<HomePage> {
                   ),
                   const SizedBox(height: 20),
 
-                  // Garis pemisah sebelum Card
-                  const Divider(height: 1, color: Colors.grey),
-                  const SizedBox(height: 20),
+                  // --- CARD KESAN DAN PESAN ---
+                  Card(
+                    elevation: 4,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Kesan:',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: brownColor,
+                            ),
+                          ),
+                          const Text(
+                            'Saya sangat berkesan dengan mata kuliah mobile ini.',
+                          ),
+                          const SizedBox(height: 10),
+                          const Text(
+                            'Saran:',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: brownColor,
+                            ),
+                          ),
+                          const Text(
+                            'Tolong dikasih deadline yg lebih panjang.',
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // --- AKHIR CARD KESAN DAN PESAN ---
+                  const Divider(height: 40, color: Colors.grey),
 
                   // 5. Username User yang Login
                   Text(
@@ -378,88 +390,49 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
 
-            const SizedBox(height: 20),
-
-            // 4. Card Kesan dan Saran
-            Card(
-              elevation: 4,
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Kesan:',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: brownColor,
-                      ),
-                    ),
-                    const Text(
-                      'Saya sangat berkesan dengan mata kuliah mobile ini.',
-                    ),
-                    const SizedBox(height: 10),
-                    const Text(
-                      'Saran:',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: brownColor,
-                      ),
-                    ),
-                    const Text('Tolong dikasih deadline yg lebih panjang.'),
-                  ],
-                ),
-              ),
-            ),
-
             const SizedBox(height: 30),
 
-            // 6. Konversi Waktu (Dropdown API)
-            Text(
-              'Konversi Waktu (4 Zona):',
+            const Text(
+              'Menu Wajib Tugas Akhir:',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: brownColor,
               ),
             ),
-            const SizedBox(height: 10),
 
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                DropdownButton<String>(
-                  value: _currentTimezoneDisplay,
-                  items: _timeService.timeZones.keys.map((String key) {
-                    return DropdownMenuItem<String>(
-                      value: key,
-                      child: Text(key, style: TextStyle(color: brownColor)),
-                    );
-                  }).toList(),
-                  onChanged: (String? newValue) {
-                    if (newValue != null) {
-                      setState(() {
-                        _currentTimezoneDisplay = newValue;
-                        _updateConvertedTime(
-                          _timeService.timeZones[newValue]!,
-                        ); // Panggil API
-                      });
-                    }
-                  },
-                ),
-                Text(
-                  _currentConvertedTime,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: accentColor,
-                  ),
-                ),
-              ],
+            // 6. Konversi Mata Uang
+            ListTile(
+              leading: const Icon(
+                Icons.account_balance_wallet,
+                color: accentColor,
+              ),
+              title: const Text('Konversi Mata Uang (min. 3 mata uang)'),
+              onTap: () {
+                setState(() {
+                  _selectedIndex = 2; // Pindah ke Keranjang
+                });
+              },
             ),
-            const SizedBox(height: 30),
 
-            // 7. Tombol Logout (Mengarah ke /login)
+            // 7. Konversi Waktu (Navigasi Langsung ke Halaman Kalkulasi Lokal)
+            ListTile(
+              leading: const Icon(Icons.access_time, color: accentColor),
+              title: const Text('Konversi Waktu (WIB, WITA, WIT, London)'),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const TimeConverterPage(),
+                  ),
+                );
+              },
+            ),
+
+            // NOTE: Menghapus const Spacer() di sini
+            const SizedBox(height: 40),
+
+            // 8. Tombol Logout (Dipastikan Selalu Aktif)
             ElevatedButton.icon(
               onPressed: _logout,
               icon: const Icon(Icons.logout),
@@ -470,6 +443,7 @@ class _HomePageState extends State<HomePage> {
                 minimumSize: const Size(double.infinity, 50),
               ),
             ),
+            const SizedBox(height: 20), // Padding di bagian bawah
           ],
         ),
       ),
@@ -483,7 +457,7 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    // FIX CACHING: Definisikan list widget di sini, di dalam build()
+    // FIX CACHING: Definisikan list widget di sini
     final List<Widget> widgetOptions = <Widget>[
       _buildMenuCatalog(),
       _buildProfilePage(),
@@ -505,14 +479,7 @@ class _HomePageState extends State<HomePage> {
             ),
           ],
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () {
-              // Ikon search di AppBar
-            },
-          ),
-        ],
+        actions: [IconButton(icon: const Icon(Icons.search), onPressed: () {})],
       ),
       body: widgetOptions.elementAt(_selectedIndex),
 
@@ -520,18 +487,18 @@ class _HomePageState extends State<HomePage> {
       bottomNavigationBar: BottomNavigationBar(
         items: <BottomNavigationBarItem>[
           BottomNavigationBarItem(
-            icon: const Icon(Icons.home),
             label: 'Home',
+            icon: const Icon(Icons.home),
             backgroundColor: brownColor,
           ),
           BottomNavigationBarItem(
-            icon: const Icon(Icons.person),
             label: 'Profil',
+            icon: const Icon(Icons.person),
             backgroundColor: brownColor,
           ),
           BottomNavigationBarItem(
-            icon: const Icon(Icons.shopping_cart),
             label: 'Keranjang',
+            icon: const Icon(Icons.shopping_cart),
             backgroundColor: brownColor,
           ),
         ],

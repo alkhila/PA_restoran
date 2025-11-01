@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'dart:async'; // Wajib untuk Timer
 
 const Color brownColor = Color(0xFF4E342E);
 const Color accentColor = Color(0xFFFFB300);
@@ -14,7 +15,13 @@ class TimeConverterPage extends StatefulWidget {
 }
 
 class _TimeConverterPageState extends State<TimeConverterPage> {
-  // Zona Waktu yang didukung (WIB, WITA, WIT, London/GMT)
+  // Waktu dasar diinisialisasi ke waktu perangkat (diasumsikan sudah WIB)
+  DateTime _currentTime = DateTime.now();
+
+  // Timer untuk pembaruan waktu berkala
+  Timer? _timer;
+
+  // Zona Waktu yang didukung (Offset dihitung relatif terhadap UTC)
   final List<Map<String, dynamic>> timeZones = [
     {'name': 'WIB (Jakarta)', 'offset': 7},
     {'name': 'WITA (Makassar)', 'offset': 8},
@@ -22,32 +29,45 @@ class _TimeConverterPageState extends State<TimeConverterPage> {
     {'name': 'London (GMT)', 'offset': 0},
   ];
 
-  DateTime _currentTime = DateTime.now().toUtc().add(
-    const Duration(hours: 7),
-  ); // Default WIB
-
   @override
   void initState() {
     super.initState();
-    _updateTime();
+    _startTimer();
   }
 
-  void _updateTime() {
-    // Memperbarui waktu setiap detik untuk efek jam
-    setState(() {
-      _currentTime = DateTime.now().toUtc().add(const Duration(hours: 7));
+  @override
+  void dispose() {
+    _timer?.cancel(); // Pastikan timer dibatalkan saat widget dihancurkan
+    super.dispose();
+  }
+
+  // --- PERBAIKAN: Menggunakan Timer yang lebih andal ---
+  void _startTimer() {
+    // Memulai pembaruan waktu setiap 1 detik
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+
+      // Mengambil waktu WIB saat ini
+      setState(() {
+        _currentTime = DateTime.now();
+      });
     });
-    // Gunakan Future.delayed untuk memanggil kembali fungsi (membuat loop)
-    Future.delayed(const Duration(seconds: 1), _updateTime);
   }
 
-  String _formatTime(DateTime time, int targetOffset) {
-    // Hitung offset dari WIB (UTC+7) ke target
-    const int wibOffset = 7;
-    final int diff = targetOffset - wibOffset;
+  String _formatTime(DateTime wibTime, int targetOffset) {
+    // Offset WIB adalah 7 jam dari UTC
+    const int wibOffsetHours = 7;
 
-    final targetTime = time.add(Duration(hours: diff));
+    // 1. Konversi WIB (waktu lokal perangkat) ke UTC
+    final utcTime = wibTime.subtract(const Duration(hours: wibOffsetHours));
 
+    // 2. Konversi UTC ke Waktu Target
+    final targetTime = utcTime.add(Duration(hours: targetOffset));
+
+    // 3. Format tampilan waktu
     return DateFormat('HH:mm:ss').format(targetTime);
   }
 
@@ -73,6 +93,7 @@ class _TimeConverterPageState extends State<TimeConverterPage> {
               ),
             ),
             Text(
+              // Menampilkan tanggal dan waktu WIB dari perangkat
               DateFormat('dd MMMM yyyy, HH:mm:ss').format(_currentTime),
               style: const TextStyle(
                 fontSize: 24,
@@ -97,6 +118,7 @@ class _TimeConverterPageState extends State<TimeConverterPage> {
                 itemCount: timeZones.length,
                 itemBuilder: (context, index) {
                   final zone = timeZones[index];
+                  // Panggil fungsi konversi dengan waktu WIB saat ini
                   final displayTime = _formatTime(
                     _currentTime,
                     zone['offset'] as int,
