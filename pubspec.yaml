@@ -39,6 +39,8 @@ dependencies:
   # Cupertino Icons jika diperlukan
   cupertino_icons: ^1.0.2
   geolocator: ^11.0.0
+  flutter_map: ^6.1.0 # <--- TAMBAHKAN INI
+  latlong2: ^0.9.1
 
 dev_dependencies:
   flutter_test:

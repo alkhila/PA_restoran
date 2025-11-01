@@ -3,7 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/cart_item_model.dart';
-import 'cart_page.dart'; // Pastikan CartPage sudah diimpor
+// import 'cart_page.dart'; // Diimpor secara tidak langsung
 
 const Color brownColor = Color(0xFF4E342E);
 const Color accentColor = Color(0xFFFFB300);
@@ -24,9 +24,19 @@ class _DetailPageState extends State<DetailPage> {
   @override
   void initState() {
     super.initState();
-    // --- PERBAIKAN: Ambil harga dinamis dari item yang dilewatkan ---
-    // Item['price'] sudah dipastikan ada dan double di api_service.dart
-    _itemPrice = widget.item['price'] as double;
+
+    // --- PERBAIKAN HARGA: Konversi yang Aman dari Item ---
+    var priceData = widget.item['price'];
+
+    if (priceData is double) {
+      _itemPrice = priceData;
+    } else if (priceData is int) {
+      _itemPrice = priceData
+          .toDouble(); // Konversi aman jika harga adalah integer
+    } else {
+      _itemPrice = 0.0; // Harga default jika data hilang
+    }
+    // -----------------------------------------------------------
   }
 
   // Fungsi untuk menambah item ke keranjang
@@ -38,7 +48,7 @@ class _DetailPageState extends State<DetailPage> {
       strMeal: widget.item['strMeal'] ?? 'Unknown Item',
       strMealThumb: widget.item['strMealThumb'] ?? '',
       quantity: _quantity,
-      price: _itemPrice, // Menggunakan harga dinamis
+      price: _itemPrice, // Menggunakan harga dinamis dari Home Page
     );
 
     // Logika sederhana: cek jika item sudah ada, update kuantitasnya
@@ -113,7 +123,7 @@ class _DetailPageState extends State<DetailPage> {
             ),
             const SizedBox(height: 10),
             Text(
-              // Menampilkan harga dinamis dari _itemPrice
+              // Menampilkan harga dinamis yang sudah disinkronkan
               'Harga Satuan: Rp ${_itemPrice.toStringAsFixed(0)}',
               style: const TextStyle(
                 fontSize: 20,

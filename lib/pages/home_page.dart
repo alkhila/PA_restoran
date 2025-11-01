@@ -7,6 +7,7 @@ import 'time_converter_page.dart';
 import '../services/api_service.dart';
 import '../services/location_service.dart'; // Wajib untuk Pelacak Lokasi
 import 'cart_page.dart';
+import 'lbs_page.dart';
 import 'detail_page.dart';
 
 // --- DEFINISI WARNA (Konstanta Desain Coklat) ---
@@ -336,8 +337,7 @@ class _HomePageState extends State<HomePage> {
           children: [
             Center(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment
-                    .center, // Memastikan konten Center terpusat
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   // 1. Foto dengan Path
                   Container(
@@ -559,6 +559,10 @@ class _HomePageState extends State<HomePage> {
     return const CartPage();
   }
 
+  Widget _buildLBSPage() {
+    return const LBSPage();
+  }
+
   @override
   Widget build(BuildContext context) {
     // Definisikan list widget di sini
@@ -566,6 +570,7 @@ class _HomePageState extends State<HomePage> {
       _buildMenuCatalog(),
       _buildProfilePage(),
       _buildCartPage(),
+      _buildLBSPage(),
     ];
 
     return Scaffold(
@@ -603,6 +608,11 @@ class _HomePageState extends State<HomePage> {
           BottomNavigationBarItem(
             label: 'Keranjang',
             icon: const Icon(Icons.shopping_cart),
+            backgroundColor: brownColor,
+          ),
+          BottomNavigationBarItem(
+            label: 'LBS',
+            icon: const Icon(Icons.location_on),
             backgroundColor: brownColor,
           ),
         ],
