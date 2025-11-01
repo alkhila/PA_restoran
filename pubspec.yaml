@@ -41,6 +41,7 @@ dependencies:
   geolocator: ^11.0.0
   flutter_map: ^6.1.0 # <--- TAMBAHKAN INI
   latlong2: ^0.9.1
+  flutter_local_notifications: ^17.2.2
 
 dev_dependencies:
   flutter_test:
