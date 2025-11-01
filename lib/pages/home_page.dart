@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 import 'time_converter_page.dart';
 import '../services/api_service.dart';
+import '../services/location_service.dart'; // IMPORT BARU
 import 'cart_page.dart';
 import 'detail_page.dart';
 
@@ -28,6 +29,12 @@ class _HomePageState extends State<HomePage> {
   late Future<List<dynamic>> _menuFuture;
 
   final ApiService _apiService = ApiService();
+  final LocationService _locationService =
+      LocationService(); // INSTANCE SERVICE LOKASI
+
+  // State untuk LBS
+  String _currentAddress = 'Klik Lacak Lokasi';
+  bool _isLocating = false;
 
   // State untuk Search dan Filter
   String _searchQuery = '';
@@ -57,9 +64,38 @@ class _HomePageState extends State<HomePage> {
     ).pushNamedAndRemoveUntil('/login', (Route<dynamic> route) => false);
   }
 
-  // --- Widget 1: Katalog Menu ---
+  // FUNGSI LBS: Lacak Lokasi Saat Ini
+  void _trackLocation() async {
+    setState(() {
+      _isLocating = true;
+      _currentAddress = 'Sedang melacak lokasi...';
+    });
+
+    try {
+      final position = await _locationService.getCurrentPosition();
+      final address = await _locationService.getAddressFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
+
+      setState(() {
+        _currentAddress = address;
+        _isLocating = false;
+      });
+    } catch (e) {
+      setState(() {
+        // Tampilkan error secara user-friendly
+        String errorMsg = e.toString().replaceAll('Exception: ', '');
+        _currentAddress = 'Error: $errorMsg';
+        _isLocating = false;
+      });
+    }
+  }
+
+  // --- Widget 1: Katalog Menu (dihilangkan karena terlalu panjang) ---
   Widget _buildMenuCatalog() {
-    // ... (Kode _buildMenuCatalog() tetap sama, tidak ditampilkan di sini karena panjang)
+    // ... (gunakan kode _buildMenuCatalog() yang sudah Anda miliki)
+    // [Keterangan: Kode di sini tidak berubah]
     return Column(
       children: [
         // --- Search Bar ---
@@ -115,9 +151,7 @@ class _HomePageState extends State<HomePage> {
                   ),
                 );
               } else if (snapshot.hasData && snapshot.data!.isNotEmpty) {
-                // --- Logika Filtering dan Searching ---
                 final rawMenuList = snapshot.data!;
-
                 List<dynamic> filteredList = rawMenuList.where((item) {
                   final Map<String, dynamic> itemMap =
                       Map<String, dynamic>.from(item);
@@ -128,13 +162,11 @@ class _HomePageState extends State<HomePage> {
                   );
                   final String itemType = itemMap['type']?.toLowerCase() ?? '';
                   bool matchesFilter = true;
-
                   if (_currentFilter == MenuFilter.makanan) {
                     matchesFilter = itemType == 'makanan';
                   } else if (_currentFilter == MenuFilter.minuman) {
                     matchesFilter = itemType == 'minuman';
                   }
-
                   return matchesSearch && matchesFilter;
                 }).toList();
 
@@ -161,7 +193,6 @@ class _HomePageState extends State<HomePage> {
                     final isLocalAsset =
                         (item['type'] == 'Minuman' &&
                         (item['strMealThumb'] as String).startsWith('assets/'));
-
                     return Card(
                       elevation: 4,
                       shape: RoundedRectangleBorder(
@@ -269,7 +300,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // Widget pembantu untuk Filter Chip
   Widget _buildFilterChip(String label, MenuFilter filter) {
     bool isSelected = _currentFilter == filter;
     return ChoiceChip(
@@ -279,7 +309,7 @@ class _HomePageState extends State<HomePage> {
       onSelected: (selected) {
         if (selected) {
           setState(() {
-            _currentFilter = filter; // Mengubah state filter
+            _currentFilter = filter;
           });
         }
       },
@@ -295,9 +325,7 @@ class _HomePageState extends State<HomePage> {
   Widget _buildProfilePage() {
     return Padding(
       padding: const EdgeInsets.all(20.0),
-      // PERBAIKAN: SingleChildScrollView diperlukan agar konten tidak overflow
       child: SingleChildScrollView(
-        // Tambahkan Column di sini untuk menahan semua konten
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -392,6 +420,47 @@ class _HomePageState extends State<HomePage> {
 
             const SizedBox(height: 30),
 
+            // --- AWAL LBS FEATURE ---
+            Text(
+              'Lokasi Saya:',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: brownColor,
+              ),
+            ),
+            Text(
+              _currentAddress,
+              style: TextStyle(
+                fontSize: 14,
+                color: _isLocating ? Colors.blue : brownColor.withOpacity(0.8),
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 10),
+            ElevatedButton.icon(
+              onPressed: _isLocating
+                  ? null
+                  : _trackLocation, // Tombol disabled saat melacak
+              icon: _isLocating
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.location_on),
+              label: Text(_isLocating ? 'Melacak...' : 'Lacak Lokasi Sekarang'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: accentColor,
+                foregroundColor: brownColor,
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // --- AKHIR LBS FEATURE ---
             const Text(
               'Menu Wajib Tugas Akhir:',
               style: TextStyle(
@@ -429,7 +498,6 @@ class _HomePageState extends State<HomePage> {
               },
             ),
 
-            // NOTE: Menghapus const Spacer() di sini
             const SizedBox(height: 40),
 
             // 8. Tombol Logout (Dipastikan Selalu Aktif)
@@ -457,7 +525,6 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    // FIX CACHING: Definisikan list widget di sini
     final List<Widget> widgetOptions = <Widget>[
       _buildMenuCatalog(),
       _buildProfilePage(),
