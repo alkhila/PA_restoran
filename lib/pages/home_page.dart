@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 import 'time_converter_page.dart';
 import '../services/api_service.dart';
-import '../services/location_service.dart'; // IMPORT BARU
+import '../services/location_service.dart'; // Wajib untuk Pelacak Lokasi
 import 'cart_page.dart';
 import 'detail_page.dart';
 
@@ -84,7 +84,6 @@ class _HomePageState extends State<HomePage> {
       });
     } catch (e) {
       setState(() {
-        // Tampilkan error secara user-friendly
         String errorMsg = e.toString().replaceAll('Exception: ', '');
         _currentAddress = 'Error: $errorMsg';
         _isLocating = false;
@@ -92,10 +91,8 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  // --- Widget 1: Katalog Menu (dihilangkan karena terlalu panjang) ---
+  // --- Widget 1: Katalog Menu (Simulasi Harga & Filter) ---
   Widget _buildMenuCatalog() {
-    // ... (gunakan kode _buildMenuCatalog() yang sudah Anda miliki)
-    // [Keterangan: Kode di sini tidak berubah]
     return Column(
       children: [
         // --- Search Bar ---
@@ -151,7 +148,9 @@ class _HomePageState extends State<HomePage> {
                   ),
                 );
               } else if (snapshot.hasData && snapshot.data!.isNotEmpty) {
+                // --- Logika Filtering dan Searching ---
                 final rawMenuList = snapshot.data!;
+
                 List<dynamic> filteredList = rawMenuList.where((item) {
                   final Map<String, dynamic> itemMap =
                       Map<String, dynamic>.from(item);
@@ -162,6 +161,7 @@ class _HomePageState extends State<HomePage> {
                   );
                   final String itemType = itemMap['type']?.toLowerCase() ?? '';
                   bool matchesFilter = true;
+
                   if (_currentFilter == MenuFilter.makanan) {
                     matchesFilter = itemType == 'makanan';
                   } else if (_currentFilter == MenuFilter.minuman) {
@@ -190,9 +190,11 @@ class _HomePageState extends State<HomePage> {
                   itemCount: filteredList.length,
                   itemBuilder: (context, index) {
                     final item = filteredList[index];
+
                     final isLocalAsset =
                         (item['type'] == 'Minuman' &&
                         (item['strMealThumb'] as String).startsWith('assets/'));
+
                     return Card(
                       elevation: 4,
                       shape: RoundedRectangleBorder(
@@ -208,15 +210,35 @@ class _HomePageState extends State<HomePage> {
                               ),
                               child: isLocalAsset
                                   ? Image.asset(
+                                      // Gambar dari Aset Lokal
                                       item['strMealThumb'],
                                       fit: BoxFit.cover,
                                       width: double.infinity,
+                                      errorBuilder:
+                                          (context, error, stackTrace) =>
+                                              const Center(
+                                                child: Icon(
+                                                  Icons.broken_image,
+                                                  size: 50,
+                                                  color: Colors.grey,
+                                                ),
+                                              ),
                                     )
                                   : Image.network(
+                                      // Gambar dari Jaringan
                                       item['strMealThumb'] ??
                                           'https://via.placeholder.com/150',
                                       fit: BoxFit.cover,
                                       width: double.infinity,
+                                      errorBuilder:
+                                          (context, error, stackTrace) =>
+                                              const Center(
+                                                child: Icon(
+                                                  Icons.broken_image,
+                                                  size: 50,
+                                                  color: Colors.grey,
+                                                ),
+                                              ),
                                     ),
                             ),
                           ),
@@ -246,11 +268,15 @@ class _HomePageState extends State<HomePage> {
                               ),
                             ),
                           ),
-                          const Padding(
-                            padding: EdgeInsets.only(left: 8.0, bottom: 4.0),
+                          Padding(
+                            padding: const EdgeInsets.only(
+                              left: 8.0,
+                              bottom: 4.0,
+                            ),
                             child: Text(
-                              'Harga: N/A',
-                              style: TextStyle(
+                              // HARGA SIMULASI
+                              'Harga: Rp ${item['price']?.toStringAsFixed(0) ?? 'N/A'}',
+                              style: const TextStyle(
                                 color: accentColor,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -300,27 +326,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildFilterChip(String label, MenuFilter filter) {
-    bool isSelected = _currentFilter == filter;
-    return ChoiceChip(
-      label: Text(label),
-      selected: isSelected,
-      selectedColor: accentColor.withOpacity(0.8),
-      onSelected: (selected) {
-        if (selected) {
-          setState(() {
-            _currentFilter = filter;
-          });
-        }
-      },
-      labelStyle: TextStyle(
-        color: isSelected ? brownColor : Colors.black87,
-        fontWeight: FontWeight.bold,
-      ),
-      backgroundColor: Colors.grey.shade100,
-    );
-  }
-
   // --- Widget 2: Halaman Profil (FINAL) ---
   Widget _buildProfilePage() {
     return Padding(
@@ -331,6 +336,8 @@ class _HomePageState extends State<HomePage> {
           children: [
             Center(
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment
+                    .center, // Memastikan konten Center terpusat
                 children: [
                   // 1. Foto dengan Path
                   Container(
@@ -367,6 +374,51 @@ class _HomePageState extends State<HomePage> {
                     style: TextStyle(color: brownColor, fontSize: 14),
                   ),
                   const SizedBox(height: 20),
+
+                  // --- LBS FEATURE: Lokasi User (BARU) ---
+                  Text(
+                    'Lokasi Saya:',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: brownColor,
+                    ),
+                  ),
+                  Text(
+                    _currentAddress,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: _isLocating
+                          ? Colors.blue
+                          : brownColor.withOpacity(0.8),
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 10),
+                  ElevatedButton.icon(
+                    onPressed: _isLocating
+                        ? null
+                        : _trackLocation, // Tombol disabled saat melacak
+                    icon: _isLocating
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.location_on),
+                    label: Text(
+                      _isLocating ? 'Melacak...' : 'Lacak Lokasi Sekarang',
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: accentColor,
+                      foregroundColor: brownColor,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  // --- AKHIR LBS FEATURE ---
 
                   // --- CARD KESAN DAN PESAN ---
                   Card(
@@ -414,107 +466,91 @@ class _HomePageState extends State<HomePage> {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
+
+                  const SizedBox(height: 30),
+
+                  const Text(
+                    'Menu Wajib Tugas Akhir:',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: brownColor,
+                    ),
+                  ),
+
+                  // 6. Konversi Mata Uang
+                  ListTile(
+                    leading: const Icon(
+                      Icons.account_balance_wallet,
+                      color: accentColor,
+                    ),
+                    title: const Text('Konversi Mata Uang (min. 3 mata uang)'),
+                    onTap: () {
+                      setState(() {
+                        _selectedIndex =
+                            2; // Pindah ke Keranjang untuk Checkout dan Konversi
+                      });
+                    },
+                  ),
+
+                  // 7. Konversi Waktu
+                  ListTile(
+                    leading: const Icon(Icons.access_time, color: accentColor),
+                    title: const Text(
+                      'Konversi Waktu (WIB, WITA, WIT, London)',
+                    ),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const TimeConverterPage(),
+                        ),
+                      );
+                    },
+                  ),
+
+                  const SizedBox(height: 40),
+
+                  // 8. Tombol Logout (Dipastikan Selalu Aktif)
+                  ElevatedButton.icon(
+                    onPressed: _logout,
+                    icon: const Icon(Icons.logout),
+                    label: const Text('Logout'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(double.infinity, 50),
+                    ),
+                  ),
+                  const SizedBox(height: 20), // Padding di bagian bawah
                 ],
               ),
             ),
-
-            const SizedBox(height: 30),
-
-            // --- AWAL LBS FEATURE ---
-            Text(
-              'Lokasi Saya:',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: brownColor,
-              ),
-            ),
-            Text(
-              _currentAddress,
-              style: TextStyle(
-                fontSize: 14,
-                color: _isLocating ? Colors.blue : brownColor.withOpacity(0.8),
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 10),
-            ElevatedButton.icon(
-              onPressed: _isLocating
-                  ? null
-                  : _trackLocation, // Tombol disabled saat melacak
-              icon: _isLocating
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Icon(Icons.location_on),
-              label: Text(_isLocating ? 'Melacak...' : 'Lacak Lokasi Sekarang'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: accentColor,
-                foregroundColor: brownColor,
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // --- AKHIR LBS FEATURE ---
-            const Text(
-              'Menu Wajib Tugas Akhir:',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: brownColor,
-              ),
-            ),
-
-            // 6. Konversi Mata Uang
-            ListTile(
-              leading: const Icon(
-                Icons.account_balance_wallet,
-                color: accentColor,
-              ),
-              title: const Text('Konversi Mata Uang (min. 3 mata uang)'),
-              onTap: () {
-                setState(() {
-                  _selectedIndex = 2; // Pindah ke Keranjang
-                });
-              },
-            ),
-
-            // 7. Konversi Waktu (Navigasi Langsung ke Halaman Kalkulasi Lokal)
-            ListTile(
-              leading: const Icon(Icons.access_time, color: accentColor),
-              title: const Text('Konversi Waktu (WIB, WITA, WIT, London)'),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const TimeConverterPage(),
-                  ),
-                );
-              },
-            ),
-
-            const SizedBox(height: 40),
-
-            // 8. Tombol Logout (Dipastikan Selalu Aktif)
-            ElevatedButton.icon(
-              onPressed: _logout,
-              icon: const Icon(Icons.logout),
-              label: const Text('Logout'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
-                minimumSize: const Size(double.infinity, 50),
-              ),
-            ),
-            const SizedBox(height: 20), // Padding di bagian bawah
           ],
         ),
       ),
+    );
+  }
+
+  // Widget pembantu untuk Filter Chip
+  Widget _buildFilterChip(String label, MenuFilter filter) {
+    bool isSelected = _currentFilter == filter;
+    return ChoiceChip(
+      label: Text(label),
+      selected: isSelected,
+      selectedColor: accentColor.withOpacity(0.8),
+      onSelected: (selected) {
+        if (selected) {
+          setState(() {
+            _currentFilter = filter; // Mengubah state filter
+          });
+        }
+      },
+      labelStyle: TextStyle(
+        color: isSelected ? brownColor : Colors.black87,
+        fontWeight: FontWeight.bold,
+      ),
+      backgroundColor: Colors.grey.shade100,
     );
   }
 
@@ -525,6 +561,7 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    // Definisikan list widget di sini
     final List<Widget> widgetOptions = <Widget>[
       _buildMenuCatalog(),
       _buildProfilePage(),

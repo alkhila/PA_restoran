@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/cart_item_model.dart';
+import 'cart_page.dart'; // Pastikan CartPage sudah diimpor
 
 const Color brownColor = Color(0xFF4E342E);
 const Color accentColor = Color(0xFFFFB300);
@@ -18,9 +19,15 @@ class DetailPage extends StatefulWidget {
 
 class _DetailPageState extends State<DetailPage> {
   int _quantity = 1;
+  late double _itemPrice; // Variabel untuk menyimpan harga dinamis
 
-  // Simulasi Harga
-  final double _basePrice = 15000.0;
+  @override
+  void initState() {
+    super.initState();
+    // --- PERBAIKAN: Ambil harga dinamis dari item yang dilewatkan ---
+    // Item['price'] sudah dipastikan ada dan double di api_service.dart
+    _itemPrice = widget.item['price'] as double;
+  }
 
   // Fungsi untuk menambah item ke keranjang
   void _addToCart() async {
@@ -31,7 +38,7 @@ class _DetailPageState extends State<DetailPage> {
       strMeal: widget.item['strMeal'] ?? 'Unknown Item',
       strMealThumb: widget.item['strMealThumb'] ?? '',
       quantity: _quantity,
-      price: _basePrice, // Gunakan harga simulasi
+      price: _itemPrice, // Menggunakan harga dinamis
     );
 
     // Logika sederhana: cek jika item sudah ada, update kuantitasnya
@@ -106,7 +113,8 @@ class _DetailPageState extends State<DetailPage> {
             ),
             const SizedBox(height: 10),
             Text(
-              'Harga Satuan: Rp ${_basePrice.toStringAsFixed(0)}',
+              // Menampilkan harga dinamis dari _itemPrice
+              'Harga Satuan: Rp ${_itemPrice.toStringAsFixed(0)}',
               style: const TextStyle(
                 fontSize: 20,
                 color: accentColor,
@@ -156,8 +164,9 @@ class _DetailPageState extends State<DetailPage> {
             ElevatedButton.icon(
               onPressed: _addToCart,
               icon: const Icon(Icons.shopping_cart_outlined),
+              // Total dihitung berdasarkan harga dinamis
               label: Text(
-                'Tambah ke Keranjang (Total: Rp ${(_basePrice * _quantity).toStringAsFixed(0)})',
+                'Tambah ke Keranjang (Total: Rp ${(_itemPrice * _quantity).toStringAsFixed(0)})',
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: accentColor,
