@@ -11,6 +11,7 @@ import 'lbs_page.dart';
 import 'detail_page.dart';
 import 'login_page.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'checkout_detail_page.dart'; // [BARU] Import untuk mengakses ReceiptPage
 
 // --- DEFINISI WARNA KONSISTEN DARI PALET PALING AKHIR ---
 const Color darkPrimaryColor = Color(0xFF703B3B);
@@ -582,8 +583,37 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 40),
-
+                  const SizedBox(height: 20), // Jarak antar tombol
+                  // --- Riwayat Pembelian Button (BARU) ---
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      // Navigasi ke ReceiptPage yang menampilkan Riwayat Pembelian
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const ReceiptPage(),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.history, color: Colors.white),
+                    label: const Text(
+                      'Riwayat Pembelian',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: darkPrimaryColor,
+                      foregroundColor: darkPrimaryColor,
+                      minimumSize: const Size(double.infinity, 50),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 40), // Jarak sebelum Logout
                   // 8. Tombol Logout
                   ElevatedButton.icon(
                     onPressed: _confirmLogout,

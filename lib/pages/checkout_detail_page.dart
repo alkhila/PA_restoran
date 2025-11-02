@@ -1,25 +1,32 @@
-// File: lib/pages/checkout_detail_page.dart (MODIFIED - USER FILTERING FOR HISTORY)
+// File: lib/pages/checkout_detail_page.dart (MODIFIED - UI Checkout & Fix Error & Navigasi)
 
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // [BARU]
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:async'; // [WAJIB] Diperlukan untuk Timer
+
 import '../models/cart_item_model.dart';
 import '../models/purchase_history_model.dart';
 import '../services/currency_service.dart';
 import '../services/location_service.dart';
+// import 'payment_success_page.dart'; // DIHAPUS - Logika dipindahkan ke ReceiptPage
 
-const Color brownColor = Color(0xFF4E342E);
-const Color accentColor = Color(0xFFFFB300);
+// --- DEFINISI WARNA KONSISTEN DARI PALET HOME_PAGE ---
 const Color darkPrimaryColor = Color(0xFF703B3B);
 const Color secondaryAccentColor = Color(0xFFA18D6D);
+const Color lightBackgroundColor = Color(0xFFE1D0B3);
+// Note: Penggunaan brownColor dan accentColor telah diganti
 
 // ======================================================
 // Halaman Struk Pembayaran / Riwayat Pembelian (Class ReceiptPage)
 // ======================================================
 class ReceiptPage extends StatefulWidget {
-  const ReceiptPage({super.key});
+  // [MODIFIKASI] Tambahkan flag untuk menandai dari checkout
+  final bool isFromCheckout;
+
+  const ReceiptPage({super.key, this.isFromCheckout = false});
 
   @override
   State<ReceiptPage> createState() => _ReceiptPageState();
@@ -27,11 +34,25 @@ class ReceiptPage extends StatefulWidget {
 
 class _ReceiptPageState extends State<ReceiptPage> {
   String _currentUserEmail = '';
+  // State untuk mengontrol tampilan sukses sementara
+  bool _showSuccessMessage = false;
 
   @override
   void initState() {
     super.initState();
     _loadCurrentUserEmail();
+
+    // Logika untuk menampilkan pesan sukses jika datang dari checkout
+    if (widget.isFromCheckout) {
+      _showSuccessMessage = true;
+      Timer(const Duration(seconds: 3), () {
+        if (mounted) {
+          setState(() {
+            _showSuccessMessage = false; // Setelah 3 detik, tampilkan riwayat
+          });
+        }
+      });
+    }
   }
 
   Future<void> _loadCurrentUserEmail() async {
@@ -42,20 +63,65 @@ class _ReceiptPageState extends State<ReceiptPage> {
   }
 
   void _backToHome(BuildContext context) async {
+    // Navigasi ke Home dengan membersihkan stack
     Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
   }
 
   @override
   Widget build(BuildContext context) {
-    // Tampilkan loading jika email belum dimuat
     if (_currentUserEmail.isEmpty) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Riwayat Pembelian')),
-        body: Center(child: CircularProgressIndicator(color: brownColor)),
+        backgroundColor: lightBackgroundColor,
+        appBar: AppBar(
+          title: const Text('Riwayat Pembelian'),
+          backgroundColor: darkPrimaryColor,
+          foregroundColor: Colors.white,
+        ),
+        body: Center(child: CircularProgressIndicator(color: darkPrimaryColor)),
       );
     }
 
+    // --- TAMPILAN 1: PEMBAYARAN SUKSES ---
+    if (_showSuccessMessage) {
+      return Scaffold(
+        backgroundColor: lightBackgroundColor,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              // Icon Centang Besar (Sesuai gambar)
+              Container(
+                padding: const EdgeInsets.all(15),
+                decoration: const BoxDecoration(
+                  color: Colors.green, // Warna Hijau standar
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.check, color: Colors.white, size: 80),
+              ),
+              const SizedBox(height: 30),
+              // Pesan Sukses
+              Text(
+                'Payment Successful!',
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: darkPrimaryColor,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'Anda akan diarahkan ke riwayat pembelian...',
+                style: TextStyle(fontSize: 16, color: secondaryAccentColor),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // --- TAMPILAN 2: RIWAYAT PEMBELIAN (Receipt List) ---
     return Scaffold(
+      backgroundColor: lightBackgroundColor,
       appBar: AppBar(
         title: const Text('Riwayat Pembelian'),
         backgroundColor: darkPrimaryColor,
@@ -67,7 +133,6 @@ class _ReceiptPageState extends State<ReceiptPage> {
           'historyBox',
         ).listenable(),
         builder: (context, Box<PurchaseHistoryModel> box, _) {
-          // Filter history hanya untuk user saat ini
           final history = box.values
               .where((record) => record.userEmail == _currentUserEmail)
               .toList()
@@ -88,46 +153,70 @@ class _ReceiptPageState extends State<ReceiptPage> {
             itemBuilder: (context, index) {
               final record = history[index];
               return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                color: Colors.white,
+                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
                 elevation: 3,
                 child: Padding(
-                  padding: const EdgeInsets.all(12.0),
+                  padding: const EdgeInsets.all(16.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Waktu Pembelian: ${DateFormat('dd MMM yyyy, HH:mm:ss').format(record.purchaseTime)}',
+                        'Waktu Pembelian',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w500,
+                          color: secondaryAccentColor,
+                        ),
+                      ),
+                      Text(
+                        DateFormat(
+                          'dd MMM yyyy, HH:mm:ss',
+                        ).format(record.purchaseTime),
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           color: darkPrimaryColor,
+                          fontSize: 16,
                         ),
                       ),
-                      const SizedBox(height: 5),
+                      const Divider(height: 20),
                       Text(
-                        'Mata Uang Akhir: ${record.currency}',
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                      Text(
-                        'Total Bayar: ${record.currency} ${record.finalPrice.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: accentColor,
+                        'Total Bayar (${record.currency})',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w500,
+                          color: secondaryAccentColor,
                         ),
                       ),
-                      const Divider(height: 15),
                       Text(
-                        'Detil Item:',
+                        '${record.currency} ${record.finalPrice.toStringAsFixed(2)}',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                          color: darkPrimaryColor,
+                        ),
+                      ),
+                      const Divider(height: 20),
+                      Text(
+                        'Detail Item:',
                         style: TextStyle(
                           fontWeight: FontWeight.w600,
                           color: darkPrimaryColor,
+                          fontSize: 14,
                         ),
                       ),
+                      const SizedBox(height: 5),
                       // Detil item yang dibeli
                       ...record.items
                           .map(
-                            (item) =>
-                                Text('- ${item.strMeal} (${item.quantity}x)'),
+                            (item) => Padding(
+                              padding: const EdgeInsets.only(left: 8.0),
+                              child: Text(
+                                '${item.strMeal} (${item.quantity}x) - Rp ${(item.price * item.quantity).toStringAsFixed(0)}',
+                                style: const TextStyle(fontSize: 13),
+                              ),
+                            ),
                           )
                           .toList(),
                     ],
@@ -140,8 +229,11 @@ class _ReceiptPageState extends State<ReceiptPage> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _backToHome(context),
-        label: const Text('Kembali ke Home'),
-        icon: const Icon(Icons.home),
+        label: const Text(
+          'Kembali ke Home',
+          style: TextStyle(color: Colors.white),
+        ),
+        icon: const Icon(Icons.home, color: Colors.white),
         backgroundColor: darkPrimaryColor,
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
@@ -175,7 +267,7 @@ class _CheckoutDetailPageState extends State<CheckoutDetailPage> {
   String _targetCurrency = 'IDR';
   double _convertedAmount = 0.0;
   String _locationStatus = 'Menentukan mata uang default...';
-  String _currentUserEmail = ''; // State untuk menyimpan email user aktif
+  String _currentUserEmail = '';
 
   @override
   void initState() {
@@ -197,7 +289,7 @@ class _CheckoutDetailPageState extends State<CheckoutDetailPage> {
 
   void _determineDefaultCurrency() async {
     try {
-      final position = await _locationService.getCurrentPosition();
+      final position = await Geolocator.getCurrentPosition();
       final locationData = await _locationService.getCountryCode(
         position.latitude,
         position.longitude,
@@ -221,8 +313,8 @@ class _CheckoutDetailPageState extends State<CheckoutDetailPage> {
       setState(() {
         _isLocating = false;
         _targetCurrency = 'IDR';
-        _locationStatus =
-            'Gagal melacak lokasi. Default: IDR. Error: ${e.toString()}';
+        String errorMsg = e.toString().replaceAll('Exception: ', '');
+        _locationStatus = 'Gagal melacak lokasi. Default: IDR. ($errorMsg)';
 
         _ratesFuture.then((rates) {
           _convertCurrency(rates);
@@ -233,10 +325,10 @@ class _CheckoutDetailPageState extends State<CheckoutDetailPage> {
 
   void _convertCurrency(Map<String, double> rates) {
     if (rates.containsKey(_targetCurrency)) {
+      // Dikonversi dari IDR (Total Price) ke Mata Uang Target
       final double targetRate = rates[_targetCurrency]!;
 
       setState(() {
-        // Konversi: Total IDR * Rate IDR ke Mata Uang Target
         _convertedAmount = widget.totalPrice * targetRate;
       });
     }
@@ -244,7 +336,6 @@ class _CheckoutDetailPageState extends State<CheckoutDetailPage> {
 
   void _handlePayment() async {
     if (_currentUserEmail.isEmpty) {
-      // Harus tidak terjadi karena ini dipanggil setelah login
       return;
     }
 
@@ -256,7 +347,7 @@ class _CheckoutDetailPageState extends State<CheckoutDetailPage> {
       currency: _targetCurrency,
       purchaseTime: DateTime.now(),
       items: widget.items.toList(),
-      userEmail: _currentUserEmail, // [REVISI] Simpan email user
+      userEmail: _currentUserEmail,
     );
     await historyBox.add(newRecord);
 
@@ -268,17 +359,49 @@ class _CheckoutDetailPageState extends State<CheckoutDetailPage> {
 
     await cartBox.deleteAll(keysToDelete);
 
-    // 3. Navigasi ke Halaman Struk/Riwayat Pembelian
+    // 3. Navigasi ke Halaman ReceiptPage dengan flag sukses
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (context) => const ReceiptPage()),
+      MaterialPageRoute(
+        // Melewati flag isFromCheckout: true
+        builder: (context) => const ReceiptPage(isFromCheckout: true),
+      ),
+    );
+  }
+
+  // Widget pembantu untuk tampilan ringkasan harga
+  Widget _buildPriceRow(String title, String value, {bool isTotal = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: isTotal ? 20 : 16,
+              fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
+              color: isTotal ? darkPrimaryColor : Colors.black87,
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: isTotal ? 20 : 16,
+              fontWeight: isTotal ? FontWeight.bold : FontWeight.w600,
+              color: isTotal ? darkPrimaryColor : Colors.black87,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: lightBackgroundColor,
       appBar: AppBar(
-        title: const Text('Detil Pembelian & Konversi'),
+        title: const Text('Konfirmasi Pembelian'),
         backgroundColor: darkPrimaryColor,
         foregroundColor: Colors.white,
       ),
@@ -287,19 +410,20 @@ class _CheckoutDetailPageState extends State<CheckoutDetailPage> {
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting ||
               _isLocating) {
-            // ... (loading state)
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  CircularProgressIndicator(color: accentColor),
+                  CircularProgressIndicator(color: darkPrimaryColor),
                   const SizedBox(height: 10),
-                  Text(_locationStatus, style: TextStyle(color: brownColor)),
+                  Text(
+                    _locationStatus,
+                    style: TextStyle(color: darkPrimaryColor),
+                  ),
                 ],
               ),
             );
           } else if (snapshot.hasError) {
-            // ... (error state)
             return Center(
               child: Text(
                 'Gagal memuat rate mata uang: ${snapshot.error}',
@@ -307,103 +431,175 @@ class _CheckoutDetailPageState extends State<CheckoutDetailPage> {
               ),
             );
           } else if (snapshot.hasData) {
-            // ... (success state)
             final rates = snapshot.data!;
             final currencyList = rates.keys.toList();
 
-            return Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Status Lokasi/Mata Uang Default
-                  Text(
-                    'Status Konversi: $_locationStatus',
-                    style: const TextStyle(fontSize: 12, color: Colors.blue),
-                  ),
-                  const SizedBox(height: 10),
+            return Column(
+              children: [
+                // --- 1. Ringkasan Pesanan (SCROLLABLE AREA) ---
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Ringkasan Pesanan',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: darkPrimaryColor,
+                          ),
+                        ),
+                        const Divider(color: secondaryAccentColor),
+                        // List Item
+                        Container(
+                          // Container polos, hanya untuk padding dan latar belakang
+                          color: Color(0xFFE1D0B3),
+                          padding: const EdgeInsets.all(10.0),
+                          child: Column(
+                            children: widget.items
+                                .map(
+                                  (item) => Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 4.0,
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            '${item.strMeal} (${item.quantity}x)',
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                        ),
+                                        Text(
+                                          'Rp ${(item.price * item.quantity).toStringAsFixed(0)}',
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                )
+                                .toList(),
+                          ),
+                        ),
 
-                  // Daftar item
-                  Text(
-                    'Ringkasan Pesanan:',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: darkPrimaryColor,
+                        const SizedBox(height: 20),
+
+                        // Status Konversi (kecil)
+                        Text(
+                          'Status Konversi: $_locationStatus',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: secondaryAccentColor,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                      ],
                     ),
                   ),
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: widget.items.length,
-                      itemBuilder: (context, index) {
-                        final item = widget.items[index];
-                        return Text(
-                          '- ${item.strMeal} (${item.quantity}x) @ Rp ${item.price.toStringAsFixed(0)}',
-                        );
-                      },
-                    ),
-                  ),
-                  const Divider(),
+                ),
 
-                  // --- Konversi Mata Uang ---
-                  Text(
-                    'Konversi Mata Uang:',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: darkPrimaryColor,
-                    ),
+                // --- 2. Pembayaran & Konversi (FIXED BOTTOM AREA - TANPA CARD) ---
+                Container(
+                  // Menjadi fixed area untuk total dan tombol
+                  color: lightBackgroundColor,
+                  padding: const EdgeInsets.only(
+                    top: 10.0,
+                    left: 20.0,
+                    right: 20.0,
                   ),
-
-                  Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Pilihan Dropdown Mata Uang
-                      const Text('Ganti Mata Uang: '),
-                      DropdownButton<String>(
-                        value: _targetCurrency,
-                        items: currencyList.map((String currency) {
-                          return DropdownMenuItem<String>(
-                            value: currency,
-                            child: Text(currency),
-                          );
-                        }).toList(),
-                        onChanged: (String? newValue) {
-                          if (newValue != null) {
-                            setState(() {
-                              _targetCurrency = newValue;
-                              _convertCurrency(rates);
-                            });
-                          }
-                        },
+                      // Subtotal (TANPA CARD)
+                      _buildPriceRow(
+                        'Subtotal Harga (IDR)',
+                        'Rp ${widget.totalPrice.toStringAsFixed(0)}',
+                      ),
+
+                      // Pilihan Mata Uang (TANPA CARD)
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Mata Uang Target:',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: darkPrimaryColor,
+                            ),
+                          ),
+                          DropdownButton<String>(
+                            value: _targetCurrency,
+                            style: TextStyle(
+                              color: darkPrimaryColor,
+                              fontSize: 16,
+                            ),
+                            dropdownColor: lightBackgroundColor,
+                            iconEnabledColor: darkPrimaryColor,
+                            items: currencyList.map((String currency) {
+                              return DropdownMenuItem<String>(
+                                value: currency,
+                                child: Text(
+                                  currency,
+                                  style: TextStyle(color: darkPrimaryColor),
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (String? newValue) {
+                              if (newValue != null) {
+                                setState(() {
+                                  _targetCurrency = newValue;
+                                  _convertCurrency(rates);
+                                });
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                      const Divider(height: 20, color: darkPrimaryColor),
+
+                      // Total Akhir Konversi (MEPET KE TOMBOL) (TANPA CARD)
+                      _buildPriceRow(
+                        'Total Pembayaran',
+                        '$_targetCurrency ${_convertedAmount.toStringAsFixed(2)}',
+                        isTotal: true,
                       ),
                     ],
                   ),
-                  const SizedBox(height: 15),
+                ),
 
-                  // --- Total Akhir ---
-                  Text(
-                    'Total Bayar Akhir: $_targetCurrency ${_convertedAmount.toStringAsFixed(2)}',
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: accentColor,
-                    ),
-                  ),
-                  const SizedBox(height: 30),
-
-                  // --- Button Pembayaran ---
-                  ElevatedButton.icon(
+                // --- 3. Button Pembayaran ---
+                Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: ElevatedButton.icon(
                     onPressed: _handlePayment,
-                    icon: const Icon(Icons.payment),
-                    label: const Text('Bayar Sekarang (Simulasi)'),
+                    icon: const Icon(Icons.payment, color: Colors.white),
+                    label: const Text(
+                      'Bayar Sekarang (Simulasi)',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: darkPrimaryColor,
-                      foregroundColor: Colors.white,
                       minimumSize: const Size(double.infinity, 50),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(15),
+                      ),
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             );
           }
           return const SizedBox.shrink();
