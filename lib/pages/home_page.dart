@@ -1,26 +1,22 @@
-// File: lib/pages/home_page.dart (MODIFIED FOR NEW DESIGN & PALETTE)
+// File: lib/pages/home_page.dart (MODIFIED - USER EMAIL & CONFIRM LOGOUT)
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'time_converter_page.dart';
 import '../services/api_service.dart';
 import '../services/location_service.dart';
 import 'cart_page.dart';
 import 'lbs_page.dart';
 import 'detail_page.dart';
+import '../models/cart_item_model.dart';
+import 'login_page.dart';
 
-// --- DEFINISI WARNA BARU (Dari Login/Register Palette) ---
-const Color darkPrimaryColor = Color(
-  0xFF703B3B,
-); // #703B3B - Primary Button/Text
-const Color secondaryAccentColor = Color(
-  0xFFA18D6D,
-); // #A18D6D - Secondary Accent
-const Color lightBackgroundColor = Color(
-  0xFFE1D0B3,
-); // #E1D0B3 - Main Background
+// --- DEFINISI WARNA ---
+const Color darkPrimaryColor = Color(0xFF703B3B);
+const Color secondaryAccentColor = Color(0xFFA18D6D);
+const Color lightBackgroundColor = Color(0xFFE1D0B3);
 
-// Enum untuk opsi filter (tetap sama)
 enum MenuFilter { all, makanan, minuman }
 
 class HomePage extends StatefulWidget {
@@ -33,16 +29,16 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
   String _userName = 'Pengguna';
+  String _currentUserEmail = ''; // State untuk menyimpan email user aktif
   late Future<List<dynamic>> _menuFuture;
 
   final ApiService _apiService = ApiService();
   final LocationService _locationService = LocationService();
+  final Box<CartItemModel> _cartBox = Hive.box<CartItemModel>('cartBox');
 
-  // State untuk LBS
   String _currentAddress = 'Klik Lacak Lokasi';
   bool _isLocating = false;
 
-  // State untuk Search dan Filter
   String _searchQuery = '';
   MenuFilter _currentFilter = MenuFilter.all;
 
@@ -53,29 +49,81 @@ class _HomePageState extends State<HomePage> {
     _menuFuture = _apiService.fetchMenu();
   }
 
-  // --- LOGIKA UTAMA (SAMA) ---
+  // --- Session Management & Email Load ---
   void _loadUserInfo() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       _userName = prefs.getString('userName') ?? 'FastFoodie';
+      // Load email user yang aktif
+      _currentUserEmail = prefs.getString('current_user_email') ?? '';
     });
+  }
+
+  // ✅ FUNGSI BARU: Konfirmasi Logout
+  void _confirmLogout() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Konfirmasi Logout'),
+          content: const Text('Apakah Anda yakin ingin keluar dari akun ini?'),
+          actions: <Widget>[
+            TextButton(
+              child: const Text(
+                'Batal',
+                style: TextStyle(color: darkPrimaryColor),
+              ),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: const Text('Logout', style: TextStyle(color: Colors.red)),
+              onPressed: () {
+                Navigator.of(context).pop();
+                _logout(); // Lanjutkan proses logout
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('isLoggedIn', false);
+    await prefs.remove('current_user_email'); // Hapus email user aktif
 
+    // Navigasi ke halaman login
     Navigator.of(
       context,
     ).pushNamedAndRemoveUntil('/login', (Route<dynamic> route) => false);
   }
 
+  // --- LOGIKA ADD TO CART (Diperbarui untuk Detail Page) ---
+  void _openDetailPage(Map<String, dynamic> item) {
+    if (_currentUserEmail.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Mohon login terlebih dahulu.')),
+      );
+      return;
+    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+            DetailPage(item: item, currentUserEmail: _currentUserEmail),
+      ),
+    );
+  }
+
+  // --- LBS Logic (Tetap) ---
   void _trackLocation() async {
     setState(() {
       _isLocating = true;
       _currentAddress = 'Sedang melacak lokasi...';
     });
-
     try {
       final position = await _locationService.getCurrentPosition();
       final address = await _locationService.getAddressFromCoordinates(
@@ -95,9 +143,8 @@ class _HomePageState extends State<HomePage> {
       });
     }
   }
-  // --- AKHIR LOGIKA UTAMA ---
 
-  // --- Widget 1: Katalog Menu (REVISI FINAL) ---
+  // --- Widget 1: Katalog Menu ---
   Widget _buildMenuCatalog() {
     return FutureBuilder<List<dynamic>>(
       future: _menuFuture,
@@ -143,7 +190,6 @@ class _HomePageState extends State<HomePage> {
 
         return CustomScrollView(
           slivers: [
-            // --- Header & Search Bar ---
             SliverToBoxAdapter(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -174,7 +220,6 @@ class _HomePageState extends State<HomePage> {
                             ),
                           ],
                         ),
-                        // Ikon Notifikasi (menggantikan foto user)
                         Icon(
                           Icons.notifications_none,
                           color: darkPrimaryColor,
@@ -304,7 +349,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // --- Kartu Item Grid (Untuk semua menu) ---
   Widget _buildGridItemCard(BuildContext context, dynamic item) {
     final isLocalAsset =
         (item['type'] == 'Minuman' &&
@@ -314,12 +358,7 @@ class _HomePageState extends State<HomePage> {
         : item['strMealThumb'] ?? 'https://via.placeholder.com/150';
 
     return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => DetailPage(item: item)),
-        );
-      },
+      onTap: () => _openDetailPage(item),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -387,16 +426,20 @@ class _HomePageState extends State<HomePage> {
                             fontSize: 16,
                           ),
                         ),
-                        Container(
-                          padding: const EdgeInsets.all(5),
-                          decoration: BoxDecoration(
-                            color: darkPrimaryColor,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(
-                            Icons.add,
-                            color: Colors.white,
-                            size: 18,
+                        // Tombol add to cart langsung (shortcut ke DetailPage)
+                        GestureDetector(
+                          onTap: () => _openDetailPage(item),
+                          child: Container(
+                            padding: const EdgeInsets.all(5),
+                            decoration: BoxDecoration(
+                              color: darkPrimaryColor,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(
+                              Icons.add,
+                              color: Colors.white,
+                              size: 18,
+                            ),
                           ),
                         ),
                       ],
@@ -411,7 +454,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // Widget pembantu untuk Filter Chip (Warna diubah)
   Widget _buildFilterChip(String label, MenuFilter filter) {
     bool isSelected = _currentFilter == filter;
     return ChoiceChip(
@@ -440,9 +482,8 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // --- Widget 2, 3, 4 (Profile, Cart, LBS - Warna Diperbarui) ---
+  // --- Widget 2, 3, 4 (Profile, Cart, LBS) ---
   Widget _buildProfilePage() {
-    // Logika Profile Page (warna di update)
     return Padding(
       padding: const EdgeInsets.all(20.0),
       child: SingleChildScrollView(
@@ -607,7 +648,7 @@ class _HomePageState extends State<HomePage> {
                   ),
                   const SizedBox(height: 40),
                   ElevatedButton.icon(
-                    onPressed: _logout,
+                    onPressed: _confirmLogout, // Panggil Konfirmasi Logout
                     icon: const Icon(Icons.logout),
                     label: const Text('Logout'),
                     style: ElevatedButton.styleFrom(
@@ -665,9 +706,9 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
         currentIndex: _selectedIndex,
-        selectedItemColor: darkPrimaryColor, // Warna terpilih
-        unselectedItemColor: secondaryAccentColor, // Warna tidak terpilih
-        backgroundColor: lightBackgroundColor, // Background Bottom Nav
+        selectedItemColor: darkPrimaryColor,
+        unselectedItemColor: secondaryAccentColor,
+        backgroundColor: lightBackgroundColor,
         type: BottomNavigationBarType.fixed,
         showUnselectedLabels: true,
         onTap: (index) {

@@ -1,18 +1,23 @@
-// File: lib/pages/detail_page.dart (MODIFIED - FINAL REVISION)
+// File: lib/pages/detail_page.dart (MODIFIED - Pass Email to Cart Model)
 
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/cart_item_model.dart';
 
-// --- DEFINISI WARNA BARU (Dari Login/Register Palette) ---
-const Color darkPrimaryColor = Color(0xFF703B3B); // #703B3B
-const Color secondaryAccentColor = Color(0xFFA18D6D); // #A18D6D
-const Color lightBackgroundColor = Color(0xFFE1D0B3); // #E1D0B3
+// --- DEFINISI WARNA BARU ---
+const Color darkPrimaryColor = Color(0xFF703B3B);
+const Color secondaryAccentColor = Color(0xFFA18D6D);
+const Color lightBackgroundColor = Color(0xFFE1D0B3);
 
 class DetailPage extends StatefulWidget {
   final Map<String, dynamic> item;
+  final String currentUserEmail; // [BARU] Terima email user aktif
 
-  const DetailPage({super.key, required this.item});
+  const DetailPage({
+    super.key,
+    required this.item,
+    required this.currentUserEmail,
+  });
 
   @override
   State<DetailPage> createState() => _DetailPageState();
@@ -39,8 +44,6 @@ class _DetailPageState extends State<DetailPage> {
     _itemPrice = _basePrice;
   }
 
-  // --- FUNGSI PENGAMBILAN DETAIL API TELAH DIHAPUS ---
-
   void _addToCart() async {
     final cartBox = Hive.box<CartItemModel>('cartBox');
 
@@ -50,10 +53,12 @@ class _DetailPageState extends State<DetailPage> {
       strMealThumb: widget.item['strMealThumb'] ?? '',
       quantity: _quantity,
       price: _basePrice,
+      userEmail: widget.currentUserEmail, // [REVISI] Tambahkan email user
     );
 
+    // Logika pencarian harus menyertakan email user
     final existingItemIndex = cartBox.values.toList().indexWhere(
-      (e) => e.idMeal == newItem.idMeal,
+      (e) => e.idMeal == newItem.idMeal && e.userEmail == newItem.userEmail,
     );
 
     if (existingItemIndex != -1) {
@@ -77,6 +82,7 @@ class _DetailPageState extends State<DetailPage> {
 
   @override
   Widget build(BuildContext context) {
+    // ... (widget build tetap sama)
     final item = widget.item;
     final isLocalAsset =
         (item['type'] == 'Minuman' &&
@@ -148,6 +154,16 @@ class _DetailPageState extends State<DetailPage> {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.star,
+                            color: secondaryAccentColor,
+                            size: 20,
+                          ),
+                          const Text("4.9", style: TextStyle(fontSize: 16)),
+                        ],
+                      ),
                     ],
                   ),
                   Text(
@@ -208,7 +224,7 @@ class _DetailPageState extends State<DetailPage> {
                   Expanded(
                     child: SingleChildScrollView(
                       child: Text(
-                        'Aplikasi ini adalah tugas akhir Pemrograman Aplikasi Mobile (PAM). Menu yang ditampilkan berasal dari API TheMealDB. Harga yang tertera adalah harga simulasi. Menu yang Anda pilih siap disajikan dengan cepat dan nikmat!',
+                        'Aplikasi ini adalah tugas akhir Pemrograman Aplikasi Mobile (PAM). Menu yang ditampilkan berasal dari API TheMealDB dan data statis. Harga yang tertera adalah harga simulasi. Menu yang Anda pilih siap disajikan dengan cepat dan nikmat!',
                         style: const TextStyle(
                           fontSize: 14,
                           color: Colors.black87,
@@ -216,8 +232,6 @@ class _DetailPageState extends State<DetailPage> {
                       ),
                     ),
                   ),
-
-                  // Menghilangkan Spacer() agar tombol berada di paling bawah container
 
                   // --- Floating Button Add to Cart (Bottom Bar) ---
                   Padding(

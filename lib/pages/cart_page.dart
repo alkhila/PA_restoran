@@ -1,14 +1,15 @@
-// File: lib/pages/cart_page.dart (MODIFIED - FINAL REVISION)
+// File: lib/pages/cart_page.dart (MODIFIED - USER FILTERING & QTY CONTROL)
 
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/cart_item_model.dart';
 import 'checkout_detail_page.dart';
 
 // --- DEFINISI WARNA KONSISTEN ---
-const Color darkPrimaryColor = Color(0xFF703B3B); // Primary Dark
-const Color secondaryAccentColor = Color(0xFFA18D6D); // Secondary Accent
-const Color lightBackgroundColor = Color(0xFFE1D0B3); // Main Background
+const Color darkPrimaryColor = Color(0xFF703B3B);
+const Color secondaryAccentColor = Color(0xFFA18D6D);
+const Color lightBackgroundColor = Color(0xFFE1D0B3);
 
 // =========================================================
 // 🔄 WIDGET INTERAKTIF UNTUK MENGUBAH KUANTITAS
@@ -16,14 +17,21 @@ const Color lightBackgroundColor = Color(0xFFE1D0B3); // Main Background
 class _CartItemInteractive extends StatefulWidget {
   final CartItemModel item;
   final int index;
+  final String currentUserEmail;
 
-  const _CartItemInteractive({required this.item, required this.index});
+  const _CartItemInteractive({
+    required this.item,
+    required this.index,
+    required this.currentUserEmail,
+  });
 
   @override
   State<_CartItemInteractive> createState() => _CartItemInteractiveState();
 }
 
 class _CartItemInteractiveState extends State<_CartItemInteractive> {
+  final Box<CartItemModel> cartBox = Hive.box<CartItemModel>('cartBox');
+
   // Fungsi untuk menampilkan dialog konfirmasi penghapusan
   Future<void> _confirmDelete(
     BuildContext context,
@@ -51,7 +59,8 @@ class _CartItemInteractiveState extends State<_CartItemInteractive> {
               ),
               child: const Text('Hapus'),
               onPressed: () {
-                Hive.box<CartItemModel>('cartBox').deleteAt(index);
+                // Hapus item dari Hive berdasarkan index
+                cartBox.deleteAt(index);
                 Navigator.of(dialogContext).pop();
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
@@ -80,6 +89,8 @@ class _CartItemInteractiveState extends State<_CartItemInteractive> {
       widget.item.save(); // Menyimpan perubahan ke Hive
     } else {
       // Jika kuantitas 1, panggil konfirmasi hapus
+      // Karena kita menggunakan filter di CartPage, index di sini adalah index filtered view,
+      // tapi Hive deleteAt tetap bekerja karena CartItemModel adalah HiveObject.
       _confirmDelete(context, widget.index, widget.item.strMeal);
     }
   }
@@ -170,7 +181,7 @@ class _CartItemInteractiveState extends State<_CartItemInteractive> {
             ),
           ),
 
-          // Quantity Selector (Minus/Quantity/Plus)
+          // Quantity Selector
           Row(
             children: [
               _buildQuantityButton(
@@ -192,7 +203,6 @@ class _CartItemInteractiveState extends State<_CartItemInteractive> {
               _buildQuantityButton(Icons.add, _incrementQuantity, false),
             ],
           ),
-          // Ikon Hapus item telah dihapus
         ],
       ),
     );
@@ -202,20 +212,45 @@ class _CartItemInteractiveState extends State<_CartItemInteractive> {
 // =========================================================
 // CLASS CartPage (BACKGROUND DIUBAH SEMUA KE LIGHT)
 // =========================================================
-class CartPage extends StatelessWidget {
+class CartPage extends StatefulWidget {
   const CartPage({super.key});
 
   @override
+  State<CartPage> createState() => _CartPageState();
+}
+
+class _CartPageState extends State<CartPage> {
+  String _currentUserEmail = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCurrentUserEmail();
+  }
+
+  Future<void> _loadCurrentUserEmail() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _currentUserEmail = prefs.getString('current_user_email') ?? '';
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // Tampilkan loading jika email belum dimuat
+    if (_currentUserEmail.isEmpty) {
+      return Scaffold(
+        backgroundColor: lightBackgroundColor,
+        body: Center(child: CircularProgressIndicator(color: darkPrimaryColor)),
+      );
+    }
+
     return Scaffold(
-      // Latar belakang utama: Light Background
       backgroundColor: lightBackgroundColor,
       appBar: AppBar(
-        // AppBar Background: Light Background
         backgroundColor: lightBackgroundColor,
         elevation: 0,
         leading: IconButton(
-          // Ikon panah kembali
           icon: Icon(Icons.arrow_back_ios, color: darkPrimaryColor),
           onPressed: () => Navigator.pop(context),
         ),
@@ -234,13 +269,18 @@ class CartPage extends StatelessWidget {
       body: ValueListenableBuilder(
         valueListenable: Hive.box<CartItemModel>('cartBox').listenable(),
         builder: (context, Box<CartItemModel> box, _) {
-          final items = box.values.toList();
-          final subtotalPrice = items.fold(
+          // Filter item hanya untuk user saat ini
+          final allItems = box.values.toList();
+          final userItems = allItems
+              .where((item) => item.userEmail == _currentUserEmail)
+              .toList();
+
+          final subtotalPrice = userItems.fold(
             0.0,
             (sum, item) => sum + (item.price * item.quantity),
           );
 
-          if (items.isEmpty) {
+          if (userItems.isEmpty) {
             return Center(
               child: Text(
                 'Keranjang Anda kosong.',
@@ -249,7 +289,6 @@ class CartPage extends StatelessWidget {
             );
           }
 
-          // Konten Container: Light Background untuk konsistensi "semua background light"
           return Container(
             decoration: const BoxDecoration(color: lightBackgroundColor),
             child: Column(
@@ -258,11 +297,19 @@ class CartPage extends StatelessWidget {
                 Expanded(
                   child: ListView.separated(
                     padding: const EdgeInsets.symmetric(horizontal: 10),
-                    itemCount: items.length,
+                    itemCount: userItems.length,
                     itemBuilder: (context, index) {
+                      // Ambil item dari list yang sudah difilter
+                      final item = userItems[index];
+
+                      // Dapatkan HiveObjectKey atau index global untuk operasi delete yang akurat
+                      // Cara paling aman adalah menggunakan item.key atau mencocokkan index setelah difilter
                       return _CartItemInteractive(
-                        item: items[index],
-                        index: index,
+                        item: item,
+                        index: box.values.toList().indexOf(
+                          item,
+                        ), // Pass index global untuk Hive.deleteAt
+                        currentUserEmail: _currentUserEmail,
                       );
                     },
                     separatorBuilder: (context, index) => Divider(
@@ -353,7 +400,7 @@ class CartPage extends StatelessWidget {
                         MaterialPageRoute(
                           builder: (context) => CheckoutDetailPage(
                             totalPrice: subtotalPrice,
-                            items: items,
+                            items: userItems, // Hanya item user saat ini
                           ),
                         ),
                       );

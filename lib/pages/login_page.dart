@@ -1,14 +1,17 @@
-// File: lib/pages/login_page.dart (MODIFIED)
+// File: lib/pages/login_page.dart (MODIFIED - HASHING & SAVE EMAIL)
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:crypto/crypto.dart';
+import 'dart:convert';
 import '../models/user_model.dart';
+import 'home_page.dart';
 
-// Definisi warna baru
-const Color primaryColor = Color(0xFF703B3B); // #703B3B - Button
-const Color secondaryColor = Color(0xFFA18D6D); // #A18D6D - Container BG
-const Color backgroundColor = Color(0xFFE1D0B3); // #E1D0B3 - Main BG
+// Definisi warna yang konsisten
+const Color primaryColor = Color(0xFF703B3B);
+const Color secondaryColor = Color(0xFFA18D6D);
+const Color backgroundColor = Color(0xFFE1D0B3);
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -21,23 +24,41 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
-  // State untuk mengontrol tampilan Login atau Register
-  bool _isLoginSelected = true;
+  // --- FUNGSI HASHING PASSWORD ---
+  String _hashPassword(String password) {
+    final bytes = utf8.encode(password);
+    final digest = sha256.convert(bytes);
+    return digest.toString();
+  }
 
   void _login() async {
-    final String email = _emailController.text;
+    final String email = _emailController.text.trim();
     final String password = _passwordController.text;
-    final userBox = Hive.box<UserModel>('userBox');
 
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Email dan Kata Sandi harus diisi!')),
+      );
+      return;
+    }
+
+    final userBox = Hive.box<UserModel>('userBox');
+    final String inputHashedPassword = _hashPassword(password);
+
+    // Cari pengguna berdasarkan email dan HASHED password
     final user = userBox.values.firstWhere(
-      (user) => user.email == email && user.password == password,
+      (user) => user.email == email && user.password == inputHashedPassword,
       orElse: () => UserModel(email: '', password: '', username: ''),
     );
 
     if (user.email.isNotEmpty) {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
+
       await prefs.setBool('isLoggedIn', true);
+      // Simpan email user aktif
+      await prefs.setString('current_user_email', user.email);
       await prefs.setString('userName', user.username);
+
       Navigator.of(context).pushReplacementNamed('/home');
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -48,120 +69,6 @@ class _LoginPageState extends State<LoginPage> {
         ),
       );
     }
-  }
-
-  void _navigateToRegister() {
-    Navigator.pushNamed(context, '/register');
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // Memastikan fokus pada Login (sesuai file aslinya hanya untuk login)
-    // Jika Anda ingin membuat satu halaman dengan toggle, perlu modifikasi lebih lanjut
-    // Sesuai permintaan, kita hanya akan memodifikasi tampilannya saja.
-    return Scaffold(
-      backgroundColor: backgroundColor, // Background #E1D0B3
-      body: SingleChildScrollView(
-        child: Column(
-          children: <Widget>[
-            // --- Bagian Atas dengan Gambar ---
-            Stack(
-              clipBehavior: Clip.none,
-              alignment: Alignment.bottomCenter,
-              children: [
-                Container(
-                  height: 250,
-                  width: double.infinity,
-                  decoration: const BoxDecoration(
-                    borderRadius: BorderRadius.vertical(
-                      bottom: Radius.circular(30),
-                    ),
-                    color: secondaryColor, // #A18D6D
-                  ),
-                  child: ClipRRect(
-                    borderRadius: const BorderRadius.vertical(
-                      bottom: Radius.circular(30),
-                    ),
-                    // Menggunakan image_24f26a.jpg untuk latar belakang
-                    child: Image.asset(
-                      'assets/images/depan.jpg',
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) =>
-                          const Center(
-                            child: Text(
-                              'Gambar Latar Belakang',
-                              style: TextStyle(color: Colors.white70),
-                            ),
-                          ),
-                    ),
-                  ),
-                ),
-                // --- Tab Selector (Sign In / Sign Up) ---
-                Positioned(
-                  bottom: -20,
-                  child: Container(
-                    padding: const EdgeInsets.all(5),
-                    decoration: BoxDecoration(
-                      color: secondaryColor,
-                      borderRadius: BorderRadius.circular(30),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
-                          blurRadius: 10,
-                          offset: const Offset(0, 5),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        _buildTab('Sign In', true, () {}),
-                        _buildTab('Sign Up', false, _navigateToRegister),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 60), // Jarak untuk tab selector
-            // --- Form Login ---
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 40.0),
-              child: Column(
-                children: [
-                  _buildTextField(
-                    controller: _emailController,
-                    label: 'Email Address',
-                    icon: Icons.email_outlined,
-                  ),
-                  const SizedBox(height: 20),
-                  _buildTextField(
-                    controller: _passwordController,
-                    label: 'Password',
-                    icon: Icons.lock_outline,
-                    obscureText: true,
-                  ),
-                  const SizedBox(height: 170),
-                  // Tombol Sign In
-                  _buildActionButton(
-                    label: 'Sign In',
-                    onPressed: _login,
-                    color: primaryColor, // #703B3B
-                  ),
-                  const SizedBox(height: 20),
-                  TextButton(
-                    onPressed: _navigateToRegister,
-                    child: Text(
-                      "Don't have an account? Sign Up",
-                      style: TextStyle(color: primaryColor),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   Widget _buildTab(String label, bool isSelected, VoidCallback onTap) {
@@ -256,6 +163,117 @@ class _LoginPageState extends State<LoginPage> {
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: backgroundColor,
+      body: SingleChildScrollView(
+        child: Column(
+          children: <Widget>[
+            // --- Bagian Atas dengan Gambar ---
+            Stack(
+              clipBehavior: Clip.none,
+              alignment: Alignment.bottomCenter,
+              children: [
+                Container(
+                  height: 250,
+                  width: double.infinity,
+                  decoration: const BoxDecoration(
+                    borderRadius: BorderRadius.vertical(
+                      bottom: Radius.circular(30),
+                    ),
+                    color: secondaryColor,
+                  ),
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.vertical(
+                      bottom: Radius.circular(30),
+                    ),
+                    child: Image.asset(
+                      'assets/images/image_24f26a.jpg',
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) =>
+                          const Center(
+                            child: Text(
+                              'Gambar Latar Belakang',
+                              style: TextStyle(color: Colors.white70),
+                            ),
+                          ),
+                    ),
+                  ),
+                ),
+                // --- Tab Selector (Sign In / Sign Up) ---
+                Positioned(
+                  bottom: -20,
+                  child: Container(
+                    padding: const EdgeInsets.all(5),
+                    decoration: BoxDecoration(
+                      color: secondaryColor,
+                      borderRadius: BorderRadius.circular(30),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 10,
+                          offset: const Offset(0, 5),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        _buildTab('Sign In', true, () {}),
+                        _buildTab(
+                          'Sign Up',
+                          false,
+                          () => Navigator.pushNamed(context, '/register'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 50),
+
+            // --- Form Login ---
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 40.0),
+              child: Column(
+                children: [
+                  _buildTextField(
+                    controller: _emailController,
+                    label: 'Email Address',
+                    icon: Icons.email_outlined,
+                  ),
+                  const SizedBox(height: 20),
+                  _buildTextField(
+                    controller: _passwordController,
+                    label: 'Kata Sandi',
+                    icon: Icons.lock_outline,
+                    obscureText: true,
+                  ),
+                  const SizedBox(height: 80),
+                  // Tombol Sign In
+                  _buildActionButton(
+                    label: 'Masuk',
+                    onPressed: _login,
+                    color: primaryColor,
+                  ),
+                  const SizedBox(height: 20),
+                  TextButton(
+                    onPressed: () => Navigator.pushNamed(context, '/register'),
+                    child: Text(
+                      'Belum punya akun? Daftar',
+                      style: TextStyle(color: primaryColor),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

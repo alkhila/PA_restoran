@@ -1,33 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:pa_restoran2/services/notification_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:hive_flutter/hive_flutter.dart'; // Wajib: Hive Flutter
-import 'package:path_provider/path_provider.dart'; // Wajib: Path Provider
-import 'models/user_model.dart'; // Wajib: Import model Hive
+import 'package:hive_flutter/hive_flutter.dart';
+import 'models/user_model.dart';
 import 'pages/login_page.dart';
 import 'pages/register_page.dart';
 import 'pages/home_page.dart';
 import 'models/cart_item_model.dart';
 import 'models/purchase_history_model.dart';
-import 'pages/time_converter_page.dart';
 
 // Definisi warna yang konsisten
 const Color accentColor = Color(0xFFFFB300);
 
-// Ganti main() menjadi async untuk inisialisasi Hive
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
 
-  // Daftarkan Adapter
-  Hive.registerAdapter(UserModelAdapter());
-  Hive.registerAdapter(CartItemModelAdapter());
-  Hive.registerAdapter(PurchaseHistoryModelAdapter()); // BARU
+  // Daftarkan Adapter (Asumsi Cart dan History menggunakan TypeId baru 3 & 4)
+  Hive.registerAdapter(UserModelAdapter()); // TypeId 0
+  Hive.registerAdapter(
+    CartItemModelAdapter(),
+  ); // TypeId 3 (Harus dijalankan build_runner!)
+  Hive.registerAdapter(
+    PurchaseHistoryModelAdapter(),
+  ); // TypeId 4 (Harus dijalankan build_runner!)
 
   // Buka Box
   await Hive.openBox<UserModel>('userBox');
   await Hive.openBox<CartItemModel>('cartBox');
-  await Hive.openBox<PurchaseHistoryModel>('historyBox'); // BARU
+  await Hive.openBox<PurchaseHistoryModel>('historyBox');
 
   // 🔔 Inisialisasi notifikasi lokal
   await NotificationService().init();
@@ -42,7 +43,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'FastFood App TA',
-      debugShowCheckedModeBanner: false, // Opsional: menghilangkan banner debug
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(primarySwatch: Colors.brown, fontFamily: 'Roboto'),
 
       // MENGATUR HOME PROPERTY UNTUK CEK SESI (SPLASH SCREEN LOGIC)
@@ -50,13 +51,10 @@ class MyApp extends StatelessWidget {
         future: _checkLoginStatus(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            // Tampilkan CircularProgressIndicator saat menunggu SharedPreferences
             return const Center(
               child: CircularProgressIndicator(color: accentColor),
             );
           }
-          // Logika Penentu Rute Awal:
-          // Jika sudah login (true), arahkan ke HomePage. Jika belum, ke LoginPage.
           return snapshot.data == true ? const HomePage() : const LoginPage();
         },
       ),
@@ -73,7 +71,10 @@ class MyApp extends StatelessWidget {
   // Fungsi Session Check: Memeriksa status login dari SharedPreferences
   Future<bool> _checkLoginStatus() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
-    return prefs.getBool('isLoggedIn') ??
-        false; // Default ke false jika belum ada
+    // Tambahkan juga pemeriksaan apakah email user aktif ada
+    final isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+    final userEmailExists = prefs.getString('current_user_email') != null;
+
+    return isLoggedIn && userEmailExists;
   }
 }

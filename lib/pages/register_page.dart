@@ -1,14 +1,16 @@
-// File: lib/pages/register_page.dart (MODIFIED)
+// File: lib/pages/register_page.dart (MODIFIED - HASHING)
 
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:crypto/crypto.dart';
+import 'dart:convert';
 import '../models/user_model.dart';
 import '../services/notification_service.dart';
 
 // Definisi warna baru
-const Color primaryColor = Color(0xFF703B3B); // #703B3B - Button
-const Color secondaryColor = Color(0xFFA18D6D); // #A18D6D - Container BG
-const Color backgroundColor = Color(0xFFE1D0B3); // #E1D0B3 - Main BG
+const Color primaryColor = Color(0xFF703B3B);
+const Color secondaryColor = Color(0xFFA18D6D);
+const Color backgroundColor = Color(0xFFE1D0B3);
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -26,11 +28,14 @@ class _RegisterPageState extends State<RegisterPage> {
 
   bool _isLoading = false;
 
-  void _register() async {
-    setState(() {
-      _isLoading = true;
-    });
+  // --- FUNGSI HASHING PASSWORD ---
+  String _hashPassword(String password) {
+    final bytes = utf8.encode(password);
+    final digest = sha256.convert(bytes);
+    return digest.toString();
+  }
 
+  void _register() async {
     final String name = _nameController.text.trim();
     final String email = _emailController.text.trim();
     final String password = _passwordController.text;
@@ -44,7 +49,6 @@ class _RegisterPageState extends State<RegisterPage> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Semua kolom harus diisi!')));
-      setState(() => _isLoading = false);
       return;
     }
 
@@ -52,9 +56,12 @@ class _RegisterPageState extends State<RegisterPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Kata sandi dan konfirmasi tidak cocok!')),
       );
-      setState(() => _isLoading = false);
       return;
     }
+
+    setState(() {
+      _isLoading = true;
+    });
 
     final userBox = Hive.box<UserModel>('userBox');
     if (userBox.values.any((user) => user.email == email)) {
@@ -69,153 +76,32 @@ class _RegisterPageState extends State<RegisterPage> {
       return;
     }
 
-    // --- SIMPAN USER BARU ---
-    final newUser = UserModel(email: email, password: password, username: name);
+    // --- SIMPAN USER BARU (MENGGUNAKAN HASH) ---
+    final String hashedPassword = _hashPassword(password);
+    final newUser = UserModel(
+      email: email,
+      password: hashedPassword,
+      username: name,
+    );
     await userBox.add(newUser);
 
     // Tampilkan notifikasi lokal
     await NotificationService().showNotification(
       id: 1,
       title: 'Registrasi Berhasil 🎉',
-      body: 'Selamat datang, $name! Akun kamu telah terdaftar di FastFood App.',
+      body:
+          'Selamat datang, ${name}! Akun kamu telah terdaftar di FastFood App.',
     );
 
-    // Snackbar konfirmasi
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Pendaftaran sukses! Silakan masuk.')),
     );
 
     setState(() => _isLoading = false);
 
-    // Kembali ke halaman login
     Navigator.pop(context);
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: backgroundColor, // Background #E1D0B3
-      body: SingleChildScrollView(
-        child: Column(
-          children: <Widget>[
-            // --- Bagian Atas dengan Gambar ---
-            Stack(
-              clipBehavior: Clip.none,
-              alignment: Alignment.bottomCenter,
-              children: [
-                Container(
-                  height: 250,
-                  width: double.infinity,
-                  decoration: const BoxDecoration(
-                    borderRadius: BorderRadius.vertical(
-                      bottom: Radius.circular(30),
-                    ),
-                    color: secondaryColor, // #A18D6D
-                  ),
-                  child: ClipRRect(
-                    borderRadius: const BorderRadius.vertical(
-                      bottom: Radius.circular(30),
-                    ),
-                    // Menggunakan image_24f26a.jpg untuk latar belakang
-                    child: Image.asset(
-                      'assets/images/depan.jpg',
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) =>
-                          const Center(
-                            child: Text(
-                              'Gambar Latar Belakang',
-                              style: TextStyle(color: Colors.white70),
-                            ),
-                          ),
-                    ),
-                  ),
-                ),
-                // --- Tab Selector (Sign In / Sign Up) ---
-                Positioned(
-                  bottom: -20,
-                  child: Container(
-                    padding: const EdgeInsets.all(5),
-                    decoration: BoxDecoration(
-                      color: secondaryColor,
-                      borderRadius: BorderRadius.circular(30),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
-                          blurRadius: 10,
-                          offset: const Offset(0, 5),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        _buildTab('Sign In', false, () {
-                          Navigator.pop(context);
-                        }),
-                        _buildTab('Sign Up', true, () {}),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 50), // Jarak untuk tab selector
-            // --- Form Register ---
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 40.0),
-              child: Column(
-                children: [
-                  _buildTextField(
-                    controller: _nameController,
-                    label: 'Full Name',
-                    icon: Icons.person_outline,
-                  ),
-                  const SizedBox(height: 20),
-                  _buildTextField(
-                    controller: _emailController,
-                    label: 'Email Address',
-                    icon: Icons.email_outlined,
-                  ),
-                  const SizedBox(height: 20),
-                  _buildTextField(
-                    controller: _passwordController,
-                    label: 'Password',
-                    icon: Icons.lock_outline,
-                    obscureText: true,
-                  ),
-                  const SizedBox(height: 20),
-                  _buildTextField(
-                    controller: _confirmPasswordController,
-                    label: 'Confirm Password',
-                    icon: Icons.lock_reset,
-                    obscureText: true,
-                  ),
-                  const SizedBox(height: 40),
-                  // Tombol Sign Up
-                  _buildActionButton(
-                    label: _isLoading ? 'Loading...' : 'Sign Up',
-                    onPressed: _isLoading ? () {} : _register,
-                    color: primaryColor,
-                  ),
-                  const SizedBox(height: 20),
-                  TextButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
-                    child: Text(
-                      'Already have an account? Sign In',
-                      style: TextStyle(color: primaryColor),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Widget pembantu yang sama dengan Login Page untuk konsistensi
   Widget _buildTab(String label, bool isSelected, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,
@@ -238,7 +124,6 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
-  // Widget pembantu yang sama dengan Login Page untuk konsistensi
   Widget _buildTextField({
     required TextEditingController controller,
     required String label,
@@ -275,7 +160,6 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
-  // Widget pembantu yang sama dengan Login Page untuk konsistensi
   Widget _buildActionButton({
     required String label,
     required VoidCallback onPressed,
@@ -319,6 +203,132 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                   ),
           ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: backgroundColor,
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(vertical: 24.0),
+        child: Column(
+          children: <Widget>[
+            // --- Bagian Atas dengan Gambar ---
+            Stack(
+              clipBehavior: Clip.none,
+              alignment: Alignment.bottomCenter,
+              children: [
+                Container(
+                  height: 250,
+                  width: double.infinity,
+                  decoration: const BoxDecoration(
+                    borderRadius: BorderRadius.vertical(
+                      bottom: Radius.circular(30),
+                    ),
+                    color: secondaryColor,
+                  ),
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.vertical(
+                      bottom: Radius.circular(30),
+                    ),
+                    // Menggunakan image_24f26a.jpg untuk latar belakang
+                    child: Image.asset(
+                      'assets/images/image_24f26a.jpg',
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) =>
+                          const Center(
+                            child: Text(
+                              'Gambar Latar Belakang',
+                              style: TextStyle(color: Colors.white70),
+                            ),
+                          ),
+                    ),
+                  ),
+                ),
+                // --- Tab Selector (Sign In / Sign Up) ---
+                Positioned(
+                  bottom: -20,
+                  child: Container(
+                    padding: const EdgeInsets.all(5),
+                    decoration: BoxDecoration(
+                      color: secondaryColor,
+                      borderRadius: BorderRadius.circular(30),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 10,
+                          offset: const Offset(0, 5),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        _buildTab('Sign In', false, () {
+                          Navigator.pop(context);
+                        }),
+                        _buildTab('Sign Up', true, () {}),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 50),
+
+            // --- Form Register ---
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 40.0),
+              child: Column(
+                children: [
+                  _buildTextField(
+                    controller: _nameController,
+                    label: 'Full Name',
+                    icon: Icons.person_outline,
+                  ),
+                  const SizedBox(height: 20),
+                  _buildTextField(
+                    controller: _emailController,
+                    label: 'Email Address',
+                    icon: Icons.email_outlined,
+                  ),
+                  const SizedBox(height: 20),
+                  _buildTextField(
+                    controller: _passwordController,
+                    label: 'Kata Sandi',
+                    icon: Icons.lock_outline,
+                    obscureText: true,
+                  ),
+                  const SizedBox(height: 20),
+                  _buildTextField(
+                    controller: _confirmPasswordController,
+                    label: 'Konfirmasi Kata Sandi',
+                    icon: Icons.lock_reset,
+                    obscureText: true,
+                  ),
+                  const SizedBox(height: 40),
+                  // Tombol Sign Up
+                  _buildActionButton(
+                    label: _isLoading ? 'Loading...' : 'Sign Up',
+                    onPressed: _isLoading ? () {} : _register,
+                    color: primaryColor,
+                  ),
+                  const SizedBox(height: 20),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                    child: Text(
+                      'Sudah punya akun? Masuk',
+                      style: TextStyle(color: primaryColor),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

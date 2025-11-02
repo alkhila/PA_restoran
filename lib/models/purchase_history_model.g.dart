@@ -8,7 +8,7 @@ part of 'purchase_history_model.dart';
 
 class PurchaseHistoryModelAdapter extends TypeAdapter<PurchaseHistoryModel> {
   @override
-  final int typeId = 2;
+  final int typeId = 4;
 
   @override
   PurchaseHistoryModel read(BinaryReader reader) {
@@ -21,13 +21,14 @@ class PurchaseHistoryModelAdapter extends TypeAdapter<PurchaseHistoryModel> {
       currency: fields[1] as String,
       purchaseTime: fields[2] as DateTime,
       items: (fields[3] as List).cast<CartItemModel>(),
+      userEmail: fields[4] as String,
     );
   }
 
   @override
   void write(BinaryWriter writer, PurchaseHistoryModel obj) {
     writer
-      ..writeByte(4)
+      ..writeByte(5)
       ..writeByte(0)
       ..write(obj.finalPrice)
       ..writeByte(1)
@@ -35,7 +36,9 @@ class PurchaseHistoryModelAdapter extends TypeAdapter<PurchaseHistoryModel> {
       ..writeByte(2)
       ..write(obj.purchaseTime)
       ..writeByte(3)
-      ..write(obj.items);
+      ..write(obj.items)
+      ..writeByte(4)
+      ..write(obj.userEmail);
   }
 
   @override

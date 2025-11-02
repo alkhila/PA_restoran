@@ -1,9 +1,10 @@
-// File: lib/pages/checkout_detail_page.dart (FINAL)
+// File: lib/pages/checkout_detail_page.dart (MODIFIED - USER FILTERING FOR HISTORY)
 
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
-import 'package:geolocator/geolocator.dart'; // Wajib jika menggunakan LBS
+import 'package:geolocator/geolocator.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // [BARU]
 import '../models/cart_item_model.dart';
 import '../models/purchase_history_model.dart';
 import '../services/currency_service.dart';
@@ -11,24 +12,54 @@ import '../services/location_service.dart';
 
 const Color brownColor = Color(0xFF4E342E);
 const Color accentColor = Color(0xFFFFB300);
+const Color darkPrimaryColor = Color(0xFF703B3B);
+const Color secondaryAccentColor = Color(0xFFA18D6D);
 
 // ======================================================
 // Halaman Struk Pembayaran / Riwayat Pembelian (Class ReceiptPage)
 // ======================================================
-class ReceiptPage extends StatelessWidget {
+class ReceiptPage extends StatefulWidget {
   const ReceiptPage({super.key});
 
+  @override
+  State<ReceiptPage> createState() => _ReceiptPageState();
+}
+
+class _ReceiptPageState extends State<ReceiptPage> {
+  String _currentUserEmail = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCurrentUserEmail();
+  }
+
+  Future<void> _loadCurrentUserEmail() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _currentUserEmail = prefs.getString('current_user_email') ?? '';
+    });
+  }
+
   void _backToHome(BuildContext context) async {
-    // Navigasi kembali ke Home Page (dan membersihkan stack)
     Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
   }
 
   @override
   Widget build(BuildContext context) {
+    // Tampilkan loading jika email belum dimuat
+    if (_currentUserEmail.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Riwayat Pembelian')),
+        body: Center(child: CircularProgressIndicator(color: brownColor)),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Riwayat Pembelian'),
-        backgroundColor: brownColor,
+        backgroundColor: darkPrimaryColor,
+        foregroundColor: Colors.white,
         automaticallyImplyLeading: false,
       ),
       body: ValueListenableBuilder(
@@ -36,16 +67,18 @@ class ReceiptPage extends StatelessWidget {
           'historyBox',
         ).listenable(),
         builder: (context, Box<PurchaseHistoryModel> box, _) {
+          // Filter history hanya untuk user saat ini
           final history = box.values
+              .where((record) => record.userEmail == _currentUserEmail)
               .toList()
               .reversed
-              .toList(); // Terbaru di atas
+              .toList();
 
           if (history.isEmpty) {
             return Center(
               child: Text(
                 'Belum ada riwayat pembelian.',
-                style: TextStyle(color: brownColor),
+                style: TextStyle(color: darkPrimaryColor),
               ),
             );
           }
@@ -66,7 +99,7 @@ class ReceiptPage extends StatelessWidget {
                         'Waktu Pembelian: ${DateFormat('dd MMM yyyy, HH:mm:ss').format(record.purchaseTime)}',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          color: brownColor,
+                          color: darkPrimaryColor,
                         ),
                       ),
                       const SizedBox(height: 5),
@@ -87,7 +120,7 @@ class ReceiptPage extends StatelessWidget {
                         'Detil Item:',
                         style: TextStyle(
                           fontWeight: FontWeight.w600,
-                          color: brownColor,
+                          color: darkPrimaryColor,
                         ),
                       ),
                       // Detil item yang dibeli
@@ -109,7 +142,7 @@ class ReceiptPage extends StatelessWidget {
         onPressed: () => _backToHome(context),
         label: const Text('Kembali ke Home'),
         icon: const Icon(Icons.home),
-        backgroundColor: brownColor,
+        backgroundColor: darkPrimaryColor,
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
@@ -137,19 +170,29 @@ class _CheckoutDetailPageState extends State<CheckoutDetailPage> {
   final CurrencyService _currencyService = CurrencyService();
   final LocationService _locationService = LocationService();
 
-  // State Lokasi & Mata Uang
   late Future<Map<String, double>> _ratesFuture;
   bool _isLocating = true;
   String _targetCurrency = 'IDR';
   double _convertedAmount = 0.0;
   String _locationStatus = 'Menentukan mata uang default...';
+  String _currentUserEmail = ''; // State untuk menyimpan email user aktif
 
   @override
   void initState() {
     super.initState();
     _ratesFuture = _currencyService.getExchangeRates();
     _convertedAmount = widget.totalPrice;
-    _determineDefaultCurrency(); // Mulai pelacakan lokasi
+    _loadCurrentUserEmailAndDetermineCurrency();
+  }
+
+  Future<void> _loadCurrentUserEmail() async {
+    final prefs = await SharedPreferences.getInstance();
+    _currentUserEmail = prefs.getString('current_user_email') ?? '';
+  }
+
+  void _loadCurrentUserEmailAndDetermineCurrency() async {
+    await _loadCurrentUserEmail();
+    _determineDefaultCurrency();
   }
 
   void _determineDefaultCurrency() async {
@@ -177,7 +220,7 @@ class _CheckoutDetailPageState extends State<CheckoutDetailPage> {
     } catch (e) {
       setState(() {
         _isLocating = false;
-        _targetCurrency = 'IDR'; // Default ke IDR jika ada error lokasi
+        _targetCurrency = 'IDR';
         _locationStatus =
             'Gagal melacak lokasi. Default: IDR. Error: ${e.toString()}';
 
@@ -200,19 +243,30 @@ class _CheckoutDetailPageState extends State<CheckoutDetailPage> {
   }
 
   void _handlePayment() async {
+    if (_currentUserEmail.isEmpty) {
+      // Harus tidak terjadi karena ini dipanggil setelah login
+      return;
+    }
+
     // 1. Simpan Riwayat Pembelian
     final historyBox = Hive.box<PurchaseHistoryModel>('historyBox');
 
     final newRecord = PurchaseHistoryModel(
       finalPrice: _convertedAmount,
       currency: _targetCurrency,
-      purchaseTime: DateTime.now(), // Waktu pembayaran ditekan
+      purchaseTime: DateTime.now(),
       items: widget.items.toList(),
+      userEmail: _currentUserEmail, // [REVISI] Simpan email user
     );
     await historyBox.add(newRecord);
 
-    // 2. Bersihkan Keranjang
-    await Hive.box<CartItemModel>('cartBox').clear();
+    // 2. Bersihkan Keranjang HANYA untuk user ini
+    final cartBox = Hive.box<CartItemModel>('cartBox');
+    final keysToDelete = cartBox.keys
+        .where((key) => cartBox.get(key)?.userEmail == _currentUserEmail)
+        .toList();
+
+    await cartBox.deleteAll(keysToDelete);
 
     // 3. Navigasi ke Halaman Struk/Riwayat Pembelian
     Navigator.of(context).pushReplacement(
@@ -225,7 +279,7 @@ class _CheckoutDetailPageState extends State<CheckoutDetailPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Detil Pembelian & Konversi'),
-        backgroundColor: brownColor,
+        backgroundColor: darkPrimaryColor,
         foregroundColor: Colors.white,
       ),
       body: FutureBuilder<Map<String, double>>(
@@ -233,17 +287,19 @@ class _CheckoutDetailPageState extends State<CheckoutDetailPage> {
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting ||
               _isLocating) {
+            // ... (loading state)
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const CircularProgressIndicator(color: accentColor),
+                  CircularProgressIndicator(color: accentColor),
                   const SizedBox(height: 10),
                   Text(_locationStatus, style: TextStyle(color: brownColor)),
                 ],
               ),
             );
           } else if (snapshot.hasError) {
+            // ... (error state)
             return Center(
               child: Text(
                 'Gagal memuat rate mata uang: ${snapshot.error}',
@@ -251,6 +307,7 @@ class _CheckoutDetailPageState extends State<CheckoutDetailPage> {
               ),
             );
           } else if (snapshot.hasData) {
+            // ... (success state)
             final rates = snapshot.data!;
             final currencyList = rates.keys.toList();
 
@@ -272,7 +329,7 @@ class _CheckoutDetailPageState extends State<CheckoutDetailPage> {
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: brownColor,
+                      color: darkPrimaryColor,
                     ),
                   ),
                   Expanded(
@@ -294,7 +351,7 @@ class _CheckoutDetailPageState extends State<CheckoutDetailPage> {
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: brownColor,
+                      color: darkPrimaryColor,
                     ),
                   ),
 
@@ -314,9 +371,7 @@ class _CheckoutDetailPageState extends State<CheckoutDetailPage> {
                           if (newValue != null) {
                             setState(() {
                               _targetCurrency = newValue;
-                              _convertCurrency(
-                                rates,
-                              ); // Konversi saat dropdown berubah
+                              _convertCurrency(rates);
                             });
                           }
                         },
@@ -342,7 +397,7 @@ class _CheckoutDetailPageState extends State<CheckoutDetailPage> {
                     icon: const Icon(Icons.payment),
                     label: const Text('Bayar Sekarang (Simulasi)'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: brownColor,
+                      backgroundColor: darkPrimaryColor,
                       foregroundColor: Colors.white,
                       minimumSize: const Size(double.infinity, 50),
                     ),
