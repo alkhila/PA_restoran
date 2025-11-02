@@ -213,7 +213,6 @@ class _RegisterPageState extends State<RegisterPage> {
     return Scaffold(
       backgroundColor: backgroundColor,
       body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(vertical: 24.0),
         child: Column(
           children: <Widget>[
             // --- Bagian Atas dengan Gambar ---
@@ -236,7 +235,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                     // Menggunakan image_24f26a.jpg untuk latar belakang
                     child: Image.asset(
-                      'assets/images/image_24f26a.jpg',
+                      'assets/images/cover.jpg',
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) =>
                           const Center(

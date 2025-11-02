@@ -194,7 +194,7 @@ class _LoginPageState extends State<LoginPage> {
                       bottom: Radius.circular(30),
                     ),
                     child: Image.asset(
-                      'assets/images/image_24f26a.jpg',
+                      'assets/images/cover.jpg',
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) =>
                           const Center(
@@ -255,10 +255,10 @@ class _LoginPageState extends State<LoginPage> {
                     icon: Icons.lock_outline,
                     obscureText: true,
                   ),
-                  const SizedBox(height: 80),
+                  const SizedBox(height: 170),
                   // Tombol Sign In
                   _buildActionButton(
-                    label: 'Masuk',
+                    label: 'Sign In',
                     onPressed: _login,
                     color: primaryColor,
                   ),
