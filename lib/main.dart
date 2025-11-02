@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pa_restoran2/services/notification_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hive_flutter/hive_flutter.dart'; // Wajib: Hive Flutter
 import 'package:path_provider/path_provider.dart'; // Wajib: Path Provider
@@ -27,6 +28,9 @@ void main() async {
   await Hive.openBox<UserModel>('userBox');
   await Hive.openBox<CartItemModel>('cartBox');
   await Hive.openBox<PurchaseHistoryModel>('historyBox'); // BARU
+
+  // 🔔 Inisialisasi notifikasi lokal
+  await NotificationService().init();
 
   runApp(const MyApp());
 }

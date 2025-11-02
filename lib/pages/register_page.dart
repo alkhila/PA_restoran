@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/user_model.dart';
+import '../services/notification_service.dart'; // ✅ tambahkan import notifikasi
 
 // Definisi warna yang konsisten
 const Color brownColor = Color(0xFF4E342E);
@@ -22,11 +23,9 @@ class _RegisterPageState extends State<RegisterPage> {
   final TextEditingController _confirmPasswordController =
       TextEditingController();
 
-  // Tambahkan State untuk Loading
   bool _isLoading = false;
 
   void _register() async {
-    // 1. Aktifkan Loading
     setState(() {
       _isLoading = true;
     });
@@ -36,7 +35,7 @@ class _RegisterPageState extends State<RegisterPage> {
     final String password = _passwordController.text;
     final String confirmPassword = _confirmPasswordController.text;
 
-    // --- Cek Validasi Input Kosong ---
+    // --- Validasi Input ---
     if (name.isEmpty ||
         email.isEmpty ||
         password.isEmpty ||
@@ -44,22 +43,18 @@ class _RegisterPageState extends State<RegisterPage> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Semua kolom harus diisi!')));
-      setState(() => _isLoading = false); // Matikan loading
+      setState(() => _isLoading = false);
       return;
     }
 
-    // --- Cek Konfirmasi Password ---
     if (password != confirmPassword) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Kata Sandi dan Konfirmasi Kata Sandi tidak cocok!'),
-        ),
+        const SnackBar(content: Text('Kata sandi dan konfirmasi tidak cocok!')),
       );
-      setState(() => _isLoading = false); // Matikan loading
+      setState(() => _isLoading = false);
       return;
     }
 
-    // --- Cek Duplikasi Email ---
     final userBox = Hive.box<UserModel>('userBox');
     if (userBox.values.any((user) => user.email == email)) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -69,23 +64,29 @@ class _RegisterPageState extends State<RegisterPage> {
           ),
         ),
       );
-      setState(() => _isLoading = false); // Matikan loading
+      setState(() => _isLoading = false);
       return;
     }
 
-    // --- SIMPAN PENGGUNA BARU KE HIVE ---
+    // --- SIMPAN USER BARU ---
     final newUser = UserModel(email: email, password: password, username: name);
     await userBox.add(newUser);
 
-    // Pendaftaran Sukses
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Pendaftaran sukses! Silakan Masuk.')),
+    // ✅ Tampilkan notifikasi lokal setelah berhasil daftar
+    await NotificationService().showNotification(
+      id: 1,
+      title: 'Registrasi Berhasil 🎉',
+      body: 'Selamat datang, $name! Akun kamu telah terdaftar di FastFood App.',
     );
 
-    // 2. Matikan Loading sebelum navigasi
+    // Snackbar konfirmasi
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Pendaftaran sukses! Silakan masuk.')),
+    );
+
     setState(() => _isLoading = false);
 
-    // 3. Navigasi kembali ke halaman Login
+    // Kembali ke halaman login
     Navigator.pop(context);
   }
 
@@ -151,11 +152,9 @@ class _RegisterPageState extends State<RegisterPage> {
             ),
             const SizedBox(height: 30),
 
-            // Tombol Daftar dengan Loading Indicator
+            // Tombol Daftar
             ElevatedButton(
-              onPressed: _isLoading
-                  ? null
-                  : _register, // Tombol disable saat loading
+              onPressed: _isLoading ? null : _register,
               style: ElevatedButton.styleFrom(
                 backgroundColor: accentColor,
                 foregroundColor: brownColor,
