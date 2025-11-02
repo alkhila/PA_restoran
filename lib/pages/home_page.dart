@@ -1,20 +1,26 @@
-// File: lib/pages/home_page.dart
+// File: lib/pages/home_page.dart (MODIFIED FOR NEW DESIGN & PALETTE)
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:intl/intl.dart';
 import 'time_converter_page.dart';
 import '../services/api_service.dart';
-import '../services/location_service.dart'; // Wajib untuk Pelacak Lokasi
+import '../services/location_service.dart';
 import 'cart_page.dart';
 import 'lbs_page.dart';
 import 'detail_page.dart';
 
-// --- DEFINISI WARNA (Konstanta Desain Coklat) ---
-const Color brownColor = Color(0xFF4E342E); // Coklat Tua
-const Color accentColor = Color(0xFFFFB300); // Oranye Aksen
+// --- DEFINISI WARNA BARU (Dari Login/Register Palette) ---
+const Color darkPrimaryColor = Color(
+  0xFF703B3B,
+); // #703B3B - Primary Button/Text
+const Color secondaryAccentColor = Color(
+  0xFFA18D6D,
+); // #A18D6D - Secondary Accent
+const Color lightBackgroundColor = Color(
+  0xFFE1D0B3,
+); // #E1D0B3 - Main Background
 
-// Enum untuk opsi filter
+// Enum untuk opsi filter (tetap sama)
 enum MenuFilter { all, makanan, minuman }
 
 class HomePage extends StatefulWidget {
@@ -30,8 +36,7 @@ class _HomePageState extends State<HomePage> {
   late Future<List<dynamic>> _menuFuture;
 
   final ApiService _apiService = ApiService();
-  final LocationService _locationService =
-      LocationService(); // INSTANCE SERVICE LOKASI
+  final LocationService _locationService = LocationService();
 
   // State untuk LBS
   String _currentAddress = 'Klik Lacak Lokasi';
@@ -48,7 +53,7 @@ class _HomePageState extends State<HomePage> {
     _menuFuture = _apiService.fetchMenu();
   }
 
-  // --- Session Management ---
+  // --- LOGIKA UTAMA (SAMA) ---
   void _loadUserInfo() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -65,7 +70,6 @@ class _HomePageState extends State<HomePage> {
     ).pushNamedAndRemoveUntil('/login', (Route<dynamic> route) => false);
   }
 
-  // FUNGSI LBS: Lacak Lokasi Saat Ini
   void _trackLocation() async {
     setState(() {
       _isLocating = true;
@@ -91,244 +95,354 @@ class _HomePageState extends State<HomePage> {
       });
     }
   }
+  // --- AKHIR LOGIKA UTAMA ---
 
-  // --- Widget 1: Katalog Menu (Simulasi Harga & Filter) ---
+  // --- Widget 1: Katalog Menu (REVISI FINAL) ---
   Widget _buildMenuCatalog() {
-    return Column(
-      children: [
-        // --- Search Bar ---
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
-          child: TextField(
-            onChanged: (value) {
-              setState(() {
-                _searchQuery = value;
-              });
-            },
-            decoration: InputDecoration(
-              hintText: "Cari menu...",
-              prefixIcon: Icon(Icons.search, color: brownColor),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide.none,
-              ),
-              filled: true,
-              fillColor: Colors.grey.shade200,
-              contentPadding: const EdgeInsets.symmetric(vertical: 0),
+    return FutureBuilder<List<dynamic>>(
+      future: _menuFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(
+            child: CircularProgressIndicator(color: darkPrimaryColor),
+          );
+        } else if (snapshot.hasError) {
+          return Center(
+            child: Text(
+              'Error: ${snapshot.error}',
+              style: const TextStyle(color: Colors.red),
             ),
-          ),
-        ),
+          );
+        } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return Center(
+            child: Text(
+              'Tidak ada menu yang tersedia.',
+              style: TextStyle(color: darkPrimaryColor),
+            ),
+          );
+        }
 
-        // --- Filter Chips (Kategori) ---
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildFilterChip('Semua', MenuFilter.all),
-              _buildFilterChip('Makanan', MenuFilter.makanan),
-              _buildFilterChip('Minuman', MenuFilter.minuman),
-            ],
-          ),
-        ),
+        final rawMenuList = snapshot.data!;
 
-        // --- Grid View Menu ---
-        Expanded(
-          child: FutureBuilder<List<dynamic>>(
-            future: _menuFuture,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(
-                  child: CircularProgressIndicator(color: accentColor),
-                );
-              } else if (snapshot.hasError) {
-                return Center(
-                  child: Text(
-                    'Error: ${snapshot.error}',
-                    style: const TextStyle(color: Colors.red),
-                  ),
-                );
-              } else if (snapshot.hasData && snapshot.data!.isNotEmpty) {
-                // --- Logika Filtering dan Searching ---
-                final rawMenuList = snapshot.data!;
+        List<dynamic> filteredList = rawMenuList.where((item) {
+          final Map<String, dynamic> itemMap = Map<String, dynamic>.from(item);
+          final String itemName = itemMap['strMeal']?.toLowerCase() ?? '';
+          final bool matchesSearch = itemName.contains(
+            _searchQuery.toLowerCase(),
+          );
+          final String itemType = itemMap['type']?.toLowerCase() ?? '';
+          bool matchesFilter = true;
 
-                List<dynamic> filteredList = rawMenuList.where((item) {
-                  final Map<String, dynamic> itemMap =
-                      Map<String, dynamic>.from(item);
-                  final String itemName =
-                      itemMap['strMeal']?.toLowerCase() ?? '';
-                  final bool matchesSearch = itemName.contains(
-                    _searchQuery.toLowerCase(),
-                  );
-                  final String itemType = itemMap['type']?.toLowerCase() ?? '';
-                  bool matchesFilter = true;
+          if (_currentFilter == MenuFilter.makanan) {
+            matchesFilter = itemType == 'makanan';
+          } else if (_currentFilter == MenuFilter.minuman) {
+            matchesFilter = itemType == 'minuman';
+          }
+          return matchesSearch && matchesFilter;
+        }).toList();
 
-                  if (_currentFilter == MenuFilter.makanan) {
-                    matchesFilter = itemType == 'makanan';
-                  } else if (_currentFilter == MenuFilter.minuman) {
-                    matchesFilter = itemType == 'minuman';
-                  }
-                  return matchesSearch && matchesFilter;
-                }).toList();
-
-                if (filteredList.isEmpty) {
-                  return Center(
-                    child: Text(
-                      'Menu tidak ditemukan.',
-                      style: TextStyle(color: brownColor),
+        return CustomScrollView(
+          slivers: [
+            // --- Header & Search Bar ---
+            SliverToBoxAdapter(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // --- Header Welcome (Tanpa Foto User) ---
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 50, 20, 10),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              "Selamat Datang,",
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.black54,
+                              ),
+                            ),
+                            Text(
+                              _userName,
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: darkPrimaryColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                        // Ikon Notifikasi (menggantikan foto user)
+                        Icon(
+                          Icons.notifications_none,
+                          color: darkPrimaryColor,
+                          size: 28,
+                        ),
+                      ],
                     ),
-                  );
-                }
+                  ),
 
-                return GridView.builder(
-                  padding: const EdgeInsets.all(10),
+                  // --- Search Bar ---
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 8,
+                    ),
+                    child: TextField(
+                      onChanged: (value) {
+                        setState(() {
+                          _searchQuery = value;
+                          _currentFilter = MenuFilter.all;
+                        });
+                      },
+                      decoration: InputDecoration(
+                        hintText: "Cari menu...",
+                        prefixIcon: Icon(
+                          Icons.search,
+                          color: secondaryAccentColor,
+                        ),
+                        suffixIcon: Icon(Icons.menu, color: darkPrimaryColor),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(15),
+                          borderSide: BorderSide.none,
+                        ),
+                        filled: true,
+                        fillColor: Colors.white,
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 10,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  // --- Filter Chips (Kategori) ---
+                  Padding(
+                    padding: const EdgeInsets.only(left: 20.0),
+                    child: Text(
+                      'Kategori',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: darkPrimaryColor,
+                      ),
+                    ),
+                  ),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                    child: Row(
+                      children:
+                          [
+                            _buildFilterChip('Semua', MenuFilter.all),
+                            _buildFilterChip('Makanan', MenuFilter.makanan),
+                            _buildFilterChip('Minuman', MenuFilter.minuman),
+                          ].map((widget) {
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 8.0),
+                              child: widget,
+                            );
+                          }).toList(),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // --- Judul Grid ---
+                  Padding(
+                    padding: const EdgeInsets.only(left: 20.0, bottom: 10),
+                    child: Text(
+                      _searchQuery.isNotEmpty
+                          ? 'Hasil Pencarian (${filteredList.length} item)'
+                          : 'Semua Menu',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: darkPrimaryColor,
+                      ),
+                    ),
+                  ),
+
+                  // Handle Empty List after filter/search
+                  if (_searchQuery.isNotEmpty && filteredList.isEmpty)
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 20.0),
+                        child: Text(
+                          'Menu tidak ditemukan untuk "$_searchQuery".',
+                          style: TextStyle(color: darkPrimaryColor),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+
+            // --- Grid View (Menu Utama) ---
+            if (filteredList.isNotEmpty)
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                sliver: SliverGrid(
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
                     childAspectRatio: 0.7,
-                    crossAxisSpacing: 10,
-                    mainAxisSpacing: 10,
+                    crossAxisSpacing: 15,
+                    mainAxisSpacing: 15,
                   ),
-                  itemCount: filteredList.length,
-                  itemBuilder: (context, index) {
+                  delegate: SliverChildBuilderDelegate((context, index) {
                     final item = filteredList[index];
-
-                    final isLocalAsset =
-                        (item['type'] == 'Minuman' &&
-                        (item['strMealThumb'] as String).startsWith('assets/'));
-
-                    return Card(
-                      elevation: 4,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: ClipRRect(
-                              borderRadius: const BorderRadius.vertical(
-                                top: Radius.circular(10),
-                              ),
-                              child: isLocalAsset
-                                  ? Image.asset(
-                                      // Gambar dari Aset Lokal
-                                      item['strMealThumb'],
-                                      fit: BoxFit.cover,
-                                      width: double.infinity,
-                                      errorBuilder:
-                                          (context, error, stackTrace) =>
-                                              const Center(
-                                                child: Icon(
-                                                  Icons.broken_image,
-                                                  size: 50,
-                                                  color: Colors.grey,
-                                                ),
-                                              ),
-                                    )
-                                  : Image.network(
-                                      // Gambar dari Jaringan
-                                      item['strMealThumb'] ??
-                                          'https://via.placeholder.com/150',
-                                      fit: BoxFit.cover,
-                                      width: double.infinity,
-                                      errorBuilder:
-                                          (context, error, stackTrace) =>
-                                              const Center(
-                                                child: Icon(
-                                                  Icons.broken_image,
-                                                  size: 50,
-                                                  color: Colors.grey,
-                                                ),
-                                              ),
-                                    ),
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: Text(
-                              item['strMeal'] ?? 'Nama Menu',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: brownColor,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.only(
-                              left: 8.0,
-                              bottom: 4.0,
-                            ),
-                            child: Text(
-                              'Tipe: ${item['type'] ?? 'N/A'}',
-                              style: const TextStyle(
-                                color: accentColor,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.only(
-                              left: 8.0,
-                              bottom: 4.0,
-                            ),
-                            child: Text(
-                              // HARGA SIMULASI
-                              'Harga: Rp ${item['price']?.toStringAsFixed(0) ?? 'N/A'}',
-                              style: const TextStyle(
-                                color: accentColor,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: Padding(
-                              padding: const EdgeInsets.only(
-                                right: 8.0,
-                                bottom: 8.0,
-                              ),
-                              child: IconButton(
-                                icon: Icon(
-                                  Icons.add_shopping_cart,
-                                  color: brownColor,
-                                ),
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) =>
-                                          DetailPage(item: item),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                );
-              } else {
-                return Center(
-                  child: Text(
-                    'Tidak ada menu yang tersedia.',
-                    style: TextStyle(color: brownColor),
-                  ),
-                );
-              }
-            },
-          ),
-        ),
-      ],
+                    return _buildGridItemCard(context, item);
+                  }, childCount: filteredList.length),
+                ),
+              ),
+            const SliverToBoxAdapter(child: SizedBox(height: 100)),
+          ],
+        );
+      },
     );
   }
 
-  // --- Widget 2: Halaman Profil (FINAL) ---
+  // --- Kartu Item Grid (Untuk semua menu) ---
+  Widget _buildGridItemCard(BuildContext context, dynamic item) {
+    final isLocalAsset =
+        (item['type'] == 'Minuman' &&
+        (item['strMealThumb'] as String).startsWith('assets/'));
+    final imageUrl = isLocalAsset
+        ? item['strMealThumb']
+        : item['strMealThumb'] ?? 'https://via.placeholder.com/150';
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => DetailPage(item: item)),
+        );
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              spreadRadius: 1,
+              blurRadius: 5,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 2,
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(20),
+                ),
+                child: isLocalAsset
+                    ? Image.asset(
+                        imageUrl,
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                      )
+                    : Image.network(
+                        imageUrl,
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        errorBuilder: (context, error, stackTrace) =>
+                            const Center(
+                              child: Icon(Icons.broken_image, size: 50),
+                            ),
+                      ),
+              ),
+            ),
+            Expanded(
+              flex: 1,
+              child: Padding(
+                padding: const EdgeInsets.all(10.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    Text(
+                      item['strMeal'] ?? 'Nama Menu',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: darkPrimaryColor,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Rp ${item['price']?.toStringAsFixed(0) ?? 'N/A'}',
+                          style: TextStyle(
+                            color: secondaryAccentColor,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.all(5),
+                          decoration: BoxDecoration(
+                            color: darkPrimaryColor,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(
+                            Icons.add,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Widget pembantu untuk Filter Chip (Warna diubah)
+  Widget _buildFilterChip(String label, MenuFilter filter) {
+    bool isSelected = _currentFilter == filter;
+    return ChoiceChip(
+      label: Text(label),
+      selected: isSelected,
+      selectedColor: darkPrimaryColor,
+      onSelected: (selected) {
+        if (selected) {
+          setState(() {
+            _currentFilter = filter;
+            _searchQuery = '';
+          });
+        }
+      },
+      labelStyle: TextStyle(
+        color: isSelected ? Colors.white : darkPrimaryColor,
+        fontWeight: FontWeight.bold,
+      ),
+      backgroundColor: lightBackgroundColor,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+        side: BorderSide(
+          color: isSelected ? darkPrimaryColor : secondaryAccentColor,
+        ),
+      ),
+    );
+  }
+
+  // --- Widget 2, 3, 4 (Profile, Cart, LBS - Warna Diperbarui) ---
   Widget _buildProfilePage() {
+    // Logika Profile Page (warna di update)
     return Padding(
       padding: const EdgeInsets.all(20.0),
       child: SingleChildScrollView(
@@ -339,49 +453,45 @@ class _HomePageState extends State<HomePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // 1. Foto dengan Path
                   Container(
                     width: 100,
                     height: 100,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      border: Border.all(color: brownColor, width: 2),
+                      border: Border.all(color: darkPrimaryColor, width: 2),
                     ),
                     child: ClipOval(
                       child: Image.asset(
                         'assets/images/alza.jpg',
                         fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) =>
-                            Icon(Icons.person, size: 60, color: brownColor),
+                        errorBuilder: (context, error, stackTrace) => Icon(
+                          Icons.person,
+                          size: 60,
+                          color: darkPrimaryColor,
+                        ),
                       ),
                     ),
                   ),
                   const SizedBox(height: 10),
-
-                  // 2. Nama dan NIM Mahasiswa
-                  const Text(
+                  Text(
                     'Alkhila Syadza Fariha / 124230090',
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: brownColor,
+                      color: darkPrimaryColor,
                     ),
                   ),
-
-                  // 3. Status Mahasiswa
-                  const Text(
+                  Text(
                     'Mahasiswa Pemrograman Aplikasi Mobile',
-                    style: TextStyle(color: brownColor, fontSize: 14),
+                    style: TextStyle(color: darkPrimaryColor, fontSize: 14),
                   ),
                   const SizedBox(height: 20),
-
-                  // --- LBS FEATURE: Lokasi User (BARU) ---
                   Text(
                     'Lokasi Saya:',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: brownColor,
+                      color: darkPrimaryColor,
                     ),
                   ),
                   Text(
@@ -389,16 +499,14 @@ class _HomePageState extends State<HomePage> {
                     style: TextStyle(
                       fontSize: 14,
                       color: _isLocating
-                          ? Colors.blue
-                          : brownColor.withOpacity(0.8),
+                          ? secondaryAccentColor
+                          : darkPrimaryColor.withOpacity(0.8),
                     ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 10),
                   ElevatedButton.icon(
-                    onPressed: _isLocating
-                        ? null
-                        : _trackLocation, // Tombol disabled saat melacak
+                    onPressed: _isLocating ? null : _trackLocation,
                     icon: _isLocating
                         ? const SizedBox(
                             width: 16,
@@ -413,14 +521,11 @@ class _HomePageState extends State<HomePage> {
                       _isLocating ? 'Melacak...' : 'Lacak Lokasi Sekarang',
                     ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: accentColor,
-                      foregroundColor: brownColor,
+                      backgroundColor: secondaryAccentColor,
+                      foregroundColor: darkPrimaryColor,
                     ),
                   ),
                   const SizedBox(height: 20),
-                  // --- AKHIR LBS FEATURE ---
-
-                  // --- CARD KESAN DAN PESAN ---
                   Card(
                     elevation: 4,
                     child: Padding(
@@ -428,22 +533,22 @@ class _HomePageState extends State<HomePage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             'Kesan:',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              color: brownColor,
+                              color: darkPrimaryColor,
                             ),
                           ),
                           const Text(
                             'Saya sangat berkesan dengan mata kuliah mobile ini.',
                           ),
                           const SizedBox(height: 10),
-                          const Text(
+                          Text(
                             'Saran:',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              color: brownColor,
+                              color: darkPrimaryColor,
                             ),
                           ),
                           const Text(
@@ -453,49 +558,41 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                   ),
-
-                  // --- AKHIR CARD KESAN DAN PESAN ---
                   const Divider(height: 40, color: Colors.grey),
-
-                  // 5. Username User yang Login
                   Text(
                     'Username: $_userName',
                     style: TextStyle(
                       fontSize: 16,
-                      color: accentColor,
+                      color: secondaryAccentColor,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-
                   const SizedBox(height: 30),
-
-                  const Text(
+                  Text(
                     'Menu Wajib Tugas Akhir:',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: brownColor,
+                      color: darkPrimaryColor,
                     ),
                   ),
-
-                  // 6. Konversi Mata Uang
                   ListTile(
-                    leading: const Icon(
+                    leading: Icon(
                       Icons.account_balance_wallet,
-                      color: accentColor,
+                      color: secondaryAccentColor,
                     ),
-                    title: const Text('Konversi Mata Uang (min. 3 mata uang)'),
+                    title: const Text('Konversi Mata Uang'),
                     onTap: () {
                       setState(() {
-                        _selectedIndex =
-                            2; // Pindah ke Keranjang untuk Checkout dan Konversi
+                        _selectedIndex = 2;
                       });
                     },
                   ),
-
-                  // 7. Konversi Waktu
                   ListTile(
-                    leading: const Icon(Icons.access_time, color: accentColor),
+                    leading: Icon(
+                      Icons.access_time,
+                      color: secondaryAccentColor,
+                    ),
                     title: const Text(
                       'Konversi Waktu (WIB, WITA, WIT, London)',
                     ),
@@ -508,10 +605,7 @@ class _HomePageState extends State<HomePage> {
                       );
                     },
                   ),
-
                   const SizedBox(height: 40),
-
-                  // 8. Tombol Logout (Dipastikan Selalu Aktif)
                   ElevatedButton.icon(
                     onPressed: _logout,
                     icon: const Icon(Icons.logout),
@@ -522,7 +616,7 @@ class _HomePageState extends State<HomePage> {
                       minimumSize: const Size(double.infinity, 50),
                     ),
                   ),
-                  const SizedBox(height: 20), // Padding di bagian bawah
+                  const SizedBox(height: 20),
                 ],
               ),
             ),
@@ -532,29 +626,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // Widget pembantu untuk Filter Chip
-  Widget _buildFilterChip(String label, MenuFilter filter) {
-    bool isSelected = _currentFilter == filter;
-    return ChoiceChip(
-      label: Text(label),
-      selected: isSelected,
-      selectedColor: accentColor.withOpacity(0.8),
-      onSelected: (selected) {
-        if (selected) {
-          setState(() {
-            _currentFilter = filter; // Mengubah state filter
-          });
-        }
-      },
-      labelStyle: TextStyle(
-        color: isSelected ? brownColor : Colors.black87,
-        fontWeight: FontWeight.bold,
-      ),
-      backgroundColor: Colors.grey.shade100,
-    );
-  }
-
-  // --- Widget 3: Halaman Keranjang ---
   Widget _buildCartPage() {
     return const CartPage();
   }
@@ -565,7 +636,6 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    // Definisikan list widget di sini
     final List<Widget> widgetOptions = <Widget>[
       _buildMenuCatalog(),
       _buildProfilePage(),
@@ -574,53 +644,32 @@ class _HomePageState extends State<HomePage> {
     ];
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF8E1),
-      appBar: AppBar(
-        backgroundColor: brownColor,
-        foregroundColor: Colors.white,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text("FastFood App", style: TextStyle(fontSize: 14)),
-            Text(
-              "Halo, $_userName!",
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
-        actions: [IconButton(icon: const Icon(Icons.search), onPressed: () {})],
-      ),
+      backgroundColor: lightBackgroundColor,
       body: widgetOptions.elementAt(_selectedIndex),
 
       // Bottom Navigation Bar
       bottomNavigationBar: BottomNavigationBar(
         items: <BottomNavigationBarItem>[
-          BottomNavigationBarItem(
-            label: 'Home',
-            icon: const Icon(Icons.home),
-            backgroundColor: brownColor,
+          const BottomNavigationBarItem(label: 'Home', icon: Icon(Icons.home)),
+          const BottomNavigationBarItem(
+            label: 'Person',
+            icon: Icon(Icons.person),
           ),
-          BottomNavigationBarItem(
-            label: 'Profil',
-            icon: const Icon(Icons.person),
-            backgroundColor: brownColor,
+          const BottomNavigationBarItem(
+            label: 'Cart',
+            icon: Icon(Icons.shopping_cart),
           ),
-          BottomNavigationBarItem(
-            label: 'Keranjang',
-            icon: const Icon(Icons.shopping_cart),
-            backgroundColor: brownColor,
-          ),
-          BottomNavigationBarItem(
+          const BottomNavigationBarItem(
             label: 'LBS',
-            icon: const Icon(Icons.location_on),
-            backgroundColor: brownColor,
+            icon: Icon(Icons.location_on),
           ),
         ],
         currentIndex: _selectedIndex,
-        selectedItemColor: accentColor,
-        unselectedItemColor: Colors.white70,
-        backgroundColor: brownColor,
+        selectedItemColor: darkPrimaryColor, // Warna terpilih
+        unselectedItemColor: secondaryAccentColor, // Warna tidak terpilih
+        backgroundColor: lightBackgroundColor, // Background Bottom Nav
         type: BottomNavigationBarType.fixed,
+        showUnselectedLabels: true,
         onTap: (index) {
           setState(() {
             _selectedIndex = index;

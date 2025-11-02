@@ -1,13 +1,14 @@
-// File: lib/pages/register_page.dart
+// File: lib/pages/register_page.dart (MODIFIED)
 
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/user_model.dart';
-import '../services/notification_service.dart'; // ✅ tambahkan import notifikasi
+import '../services/notification_service.dart';
 
-// Definisi warna yang konsisten
-const Color brownColor = Color(0xFF4E342E);
-const Color accentColor = Color(0xFFFFB300);
+// Definisi warna baru
+const Color primaryColor = Color(0xFF703B3B); // #703B3B - Button
+const Color secondaryColor = Color(0xFFA18D6D); // #A18D6D - Container BG
+const Color backgroundColor = Color(0xFFE1D0B3); // #E1D0B3 - Main BG
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -72,7 +73,7 @@ class _RegisterPageState extends State<RegisterPage> {
     final newUser = UserModel(email: email, password: password, username: name);
     await userBox.add(newUser);
 
-    // ✅ Tampilkan notifikasi lokal setelah berhasil daftar
+    // Tampilkan notifikasi lokal
     await NotificationService().showNotification(
       id: 1,
       title: 'Registrasi Berhasil 🎉',
@@ -93,105 +94,231 @@ class _RegisterPageState extends State<RegisterPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: const Text("Buat Akun"),
-        backgroundColor: brownColor,
-        foregroundColor: Colors.white,
-      ),
+      backgroundColor: backgroundColor, // Background #E1D0B3
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            Text(
-              'Daftar Sekarang!',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: brownColor,
-              ),
-            ),
-            const SizedBox(height: 30),
-            TextField(
-              controller: _nameController,
-              decoration: InputDecoration(
-                labelText: 'Nama Lengkap',
-                border: const OutlineInputBorder(),
-                prefixIcon: Icon(Icons.person_outline, color: accentColor),
-              ),
-            ),
-            const SizedBox(height: 15),
-            TextField(
-              controller: _emailController,
-              decoration: InputDecoration(
-                labelText: 'Email',
-                border: const OutlineInputBorder(),
-                prefixIcon: Icon(Icons.email, color: accentColor),
-              ),
-            ),
-            const SizedBox(height: 15),
-            TextField(
-              controller: _passwordController,
-              obscureText: true,
-              decoration: InputDecoration(
-                labelText: 'Kata Sandi',
-                border: const OutlineInputBorder(),
-                prefixIcon: Icon(Icons.lock, color: accentColor),
-              ),
-            ),
-            const SizedBox(height: 15),
-            TextField(
-              controller: _confirmPasswordController,
-              obscureText: true,
-              decoration: InputDecoration(
-                labelText: 'Konfirmasi Kata Sandi',
-                border: const OutlineInputBorder(),
-                prefixIcon: Icon(Icons.lock_reset, color: accentColor),
-              ),
-            ),
-            const SizedBox(height: 30),
-
-            // Tombol Daftar
-            ElevatedButton(
-              onPressed: _isLoading ? null : _register,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: accentColor,
-                foregroundColor: brownColor,
-                minimumSize: const Size(double.infinity, 50),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              child: _isLoading
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        color: brownColor,
-                        strokeWidth: 3,
-                      ),
-                    )
-                  : const Text(
-                      'Daftar',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+            // --- Bagian Atas dengan Gambar ---
+            Stack(
+              clipBehavior: Clip.none,
+              alignment: Alignment.bottomCenter,
+              children: [
+                Container(
+                  height: 250,
+                  width: double.infinity,
+                  decoration: const BoxDecoration(
+                    borderRadius: BorderRadius.vertical(
+                      bottom: Radius.circular(30),
                     ),
+                    color: secondaryColor, // #A18D6D
+                  ),
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.vertical(
+                      bottom: Radius.circular(30),
+                    ),
+                    // Menggunakan image_24f26a.jpg untuk latar belakang
+                    child: Image.asset(
+                      'assets/images/depan.jpg',
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) =>
+                          const Center(
+                            child: Text(
+                              'Gambar Latar Belakang',
+                              style: TextStyle(color: Colors.white70),
+                            ),
+                          ),
+                    ),
+                  ),
+                ),
+                // --- Tab Selector (Sign In / Sign Up) ---
+                Positioned(
+                  bottom: -20,
+                  child: Container(
+                    padding: const EdgeInsets.all(5),
+                    decoration: BoxDecoration(
+                      color: secondaryColor,
+                      borderRadius: BorderRadius.circular(30),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 10,
+                          offset: const Offset(0, 5),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        _buildTab('Sign In', false, () {
+                          Navigator.pop(context);
+                        }),
+                        _buildTab('Sign Up', true, () {}),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
-
-            const SizedBox(height: 20),
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: Text(
-                'Sudah punya akun? Masuk',
-                style: TextStyle(color: brownColor),
+            const SizedBox(height: 50), // Jarak untuk tab selector
+            // --- Form Register ---
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 40.0),
+              child: Column(
+                children: [
+                  _buildTextField(
+                    controller: _nameController,
+                    label: 'Full Name',
+                    icon: Icons.person_outline,
+                  ),
+                  const SizedBox(height: 20),
+                  _buildTextField(
+                    controller: _emailController,
+                    label: 'Email Address',
+                    icon: Icons.email_outlined,
+                  ),
+                  const SizedBox(height: 20),
+                  _buildTextField(
+                    controller: _passwordController,
+                    label: 'Password',
+                    icon: Icons.lock_outline,
+                    obscureText: true,
+                  ),
+                  const SizedBox(height: 20),
+                  _buildTextField(
+                    controller: _confirmPasswordController,
+                    label: 'Confirm Password',
+                    icon: Icons.lock_reset,
+                    obscureText: true,
+                  ),
+                  const SizedBox(height: 40),
+                  // Tombol Sign Up
+                  _buildActionButton(
+                    label: _isLoading ? 'Loading...' : 'Sign Up',
+                    onPressed: _isLoading ? () {} : _register,
+                    color: primaryColor,
+                  ),
+                  const SizedBox(height: 20),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                    child: Text(
+                      'Already have an account? Sign In',
+                      style: TextStyle(color: primaryColor),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  // Widget pembantu yang sama dengan Login Page untuk konsistensi
+  Widget _buildTab(String label, bool isSelected, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 120,
+        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? primaryColor : Colors.transparent,
+          borderRadius: BorderRadius.circular(30),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : Colors.black54,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Widget pembantu yang sama dengan Login Page untuk konsistensi
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    bool obscureText = false,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, color: primaryColor, size: 20),
+            const SizedBox(width: 10),
+            Text(label, style: TextStyle(color: primaryColor, fontSize: 16)),
+          ],
+        ),
+        const SizedBox(height: 5),
+        TextField(
+          controller: controller,
+          obscureText: obscureText,
+          style: TextStyle(color: primaryColor),
+          decoration: InputDecoration(
+            isDense: true,
+            contentPadding: const EdgeInsets.symmetric(vertical: 5),
+            enabledBorder: UnderlineInputBorder(
+              borderSide: BorderSide(color: secondaryColor, width: 2),
+            ),
+            focusedBorder: UnderlineInputBorder(
+              borderSide: BorderSide(color: primaryColor, width: 2),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Widget pembantu yang sama dengan Login Page untuk konsistensi
+  Widget _buildActionButton({
+    required String label,
+    required VoidCallback onPressed,
+    required Color color,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(25),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.4),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(25),
+          child: Container(
+            alignment: Alignment.center,
+            padding: const EdgeInsets.symmetric(vertical: 15),
+            child: _isLoading
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 3,
+                    ),
+                  )
+                : Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+          ),
         ),
       ),
     );

@@ -1,15 +1,16 @@
-// File: lib/pages/detail_page.dart
+// File: lib/pages/detail_page.dart (MODIFIED - FINAL REVISION)
 
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/cart_item_model.dart';
-// import 'cart_page.dart'; // Diimpor secara tidak langsung
 
-const Color brownColor = Color(0xFF4E342E);
-const Color accentColor = Color(0xFFFFB300);
+// --- DEFINISI WARNA BARU (Dari Login/Register Palette) ---
+const Color darkPrimaryColor = Color(0xFF703B3B); // #703B3B
+const Color secondaryAccentColor = Color(0xFFA18D6D); // #A18D6D
+const Color lightBackgroundColor = Color(0xFFE1D0B3); // #E1D0B3
 
 class DetailPage extends StatefulWidget {
-  final Map<String, dynamic> item; // Menerima data menu
+  final Map<String, dynamic> item;
 
   const DetailPage({super.key, required this.item});
 
@@ -19,27 +20,27 @@ class DetailPage extends StatefulWidget {
 
 class _DetailPageState extends State<DetailPage> {
   int _quantity = 1;
-  late double _itemPrice; // Variabel untuk menyimpan harga dinamis
+  late double _itemPrice;
+  late double _basePrice;
 
   @override
   void initState() {
     super.initState();
 
-    // --- PERBAIKAN HARGA: Konversi yang Aman dari Item ---
     var priceData = widget.item['price'];
 
     if (priceData is double) {
-      _itemPrice = priceData;
+      _basePrice = priceData;
     } else if (priceData is int) {
-      _itemPrice = priceData
-          .toDouble(); // Konversi aman jika harga adalah integer
+      _basePrice = priceData.toDouble();
     } else {
-      _itemPrice = 0.0; // Harga default jika data hilang
+      _basePrice = 0.0;
     }
-    // -----------------------------------------------------------
+    _itemPrice = _basePrice;
   }
 
-  // Fungsi untuk menambah item ke keranjang
+  // --- FUNGSI PENGAMBILAN DETAIL API TELAH DIHAPUS ---
+
   void _addToCart() async {
     final cartBox = Hive.box<CartItemModel>('cartBox');
 
@@ -48,10 +49,9 @@ class _DetailPageState extends State<DetailPage> {
       strMeal: widget.item['strMeal'] ?? 'Unknown Item',
       strMealThumb: widget.item['strMealThumb'] ?? '',
       quantity: _quantity,
-      price: _itemPrice, // Menggunakan harga dinamis dari Home Page
+      price: _basePrice,
     );
 
-    // Logika sederhana: cek jika item sudah ada, update kuantitasnya
     final existingItemIndex = cartBox.values.toList().indexWhere(
       (e) => e.idMeal == newItem.idMeal,
     );
@@ -64,12 +64,12 @@ class _DetailPageState extends State<DetailPage> {
       await cartBox.add(newItem);
     }
 
-    // Beri feedback dan kembali ke home
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          '${newItem.quantity}x ${newItem.strMeal} ditambahkan ke keranjang!',
+          '${_quantity}x ${newItem.strMeal} ditambahkan ke keranjang!',
         ),
+        backgroundColor: darkPrimaryColor,
       ),
     );
     Navigator.pop(context);
@@ -81,114 +81,201 @@ class _DetailPageState extends State<DetailPage> {
     final isLocalAsset =
         (item['type'] == 'Minuman' &&
         (item['strMealThumb'] as String).startsWith('assets/'));
+    final imageUrl = isLocalAsset
+        ? item['strMealThumb']
+        : item['strMealThumb'] ?? 'https://via.placeholder.com/250';
 
     return Scaffold(
+      backgroundColor: lightBackgroundColor,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: Text(item['strMeal'] ?? 'Detail Menu'),
-        backgroundColor: brownColor,
-        foregroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.5),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.arrow_back, color: Colors.white),
+          ),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            // --- Gambar Menu ---
-            ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: isLocalAsset
-                  ? Image.asset(
-                      item['strMealThumb'],
-                      fit: BoxFit.cover,
-                      height: 250,
-                      width: double.infinity,
-                    )
-                  : Image.network(
-                      item['strMealThumb'] ?? 'https://via.placeholder.com/250',
-                      fit: BoxFit.cover,
-                      height: 250,
-                      width: double.infinity,
+      body: Stack(
+        children: [
+          // --- Gambar Menu ---
+          SizedBox(
+            height: MediaQuery.of(context).size.height * 0.45,
+            width: double.infinity,
+            child: isLocalAsset
+                ? Image.asset(imageUrl, fit: BoxFit.cover)
+                : Image.network(
+                    imageUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) =>
+                        const Center(child: Icon(Icons.broken_image, size: 80)),
+                  ),
+          ),
+
+          // --- Detail Container ---
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Container(
+              height: MediaQuery.of(context).size.height * 0.6,
+              padding: const EdgeInsets.fromLTRB(25, 30, 25, 0),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(35)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  // Nama Menu dan Rating
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          item['strMeal'] ?? 'Unknown Item',
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: darkPrimaryColor,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Text(
+                    'Kategori: ${item['type'] ?? 'N/A'}',
+                    style: const TextStyle(fontSize: 14, color: Colors.grey),
+                  ),
+                  const Divider(height: 30),
+
+                  // --- Quantity Selector ---
+                  Text(
+                    'Jumlah Pesanan',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: darkPrimaryColor,
                     ),
-            ),
-            const SizedBox(height: 20),
-
-            // --- Nama dan Harga ---
-            Text(
-              item['strMeal'] ?? 'Unknown Item',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: brownColor,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              // Menampilkan harga dinamis yang sudah disinkronkan
-              'Harga Satuan: Rp ${_itemPrice.toStringAsFixed(0)}',
-              style: const TextStyle(
-                fontSize: 20,
-                color: accentColor,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            Text(
-              'Kategori: ${item['type'] ?? 'N/A'}',
-              style: TextStyle(
-                fontSize: 16,
-                color: brownColor.withOpacity(0.7),
-              ),
-            ),
-            const Divider(height: 30),
-
-            // --- Kuantitas ---
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Jumlah Pesanan:', style: TextStyle(fontSize: 18)),
-                Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.remove_circle_outline),
-                      onPressed: () {
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [
+                      _buildQuantityButton(Icons.remove, () {
                         setState(() {
                           if (_quantity > 1) _quantity--;
                         });
-                      },
-                    ),
-                    Text('$_quantity', style: const TextStyle(fontSize: 20)),
-                    IconButton(
-                      icon: const Icon(Icons.add_circle_outline),
-                      onPressed: () {
+                      }),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                        child: Text(
+                          '$_quantity',
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      _buildQuantityButton(Icons.add, () {
                         setState(() {
                           _quantity++;
                         });
-                      },
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 30),
+                      }),
+                    ],
+                  ),
+                  const Divider(height: 30),
 
-            // --- Tombol Tambah ke Keranjang ---
-            ElevatedButton.icon(
-              onPressed: _addToCart,
-              icon: const Icon(Icons.shopping_cart_outlined),
-              // Total dihitung berdasarkan harga dinamis
-              label: Text(
-                'Tambah ke Keranjang (Total: Rp ${(_itemPrice * _quantity).toStringAsFixed(0)})',
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: accentColor,
-                foregroundColor: brownColor,
-                minimumSize: const Size(double.infinity, 60),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
+                  // --- Deskripsi Statis (About) ---
+                  Text(
+                    'About',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: darkPrimaryColor,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+
+                  // Menggunakan Expanded dan SingleChildScrollView agar teks dapat di-scroll
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Text(
+                        'Aplikasi ini adalah tugas akhir Pemrograman Aplikasi Mobile (PAM). Menu yang ditampilkan berasal dari API TheMealDB. Harga yang tertera adalah harga simulasi. Menu yang Anda pilih siap disajikan dengan cepat dan nikmat!',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // Menghilangkan Spacer() agar tombol berada di paling bawah container
+
+                  // --- Floating Button Add to Cart (Bottom Bar) ---
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 25.0),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: _addToCart,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: darkPrimaryColor,
+                              padding: const EdgeInsets.symmetric(vertical: 15),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(15),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.shopping_cart,
+                                  color: Colors.white,
+                                ),
+                                const SizedBox(width: 10),
+                                Text(
+                                  'Add to Cart | Rp ${(_itemPrice * _quantity).toStringAsFixed(0)}',
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuantityButton(IconData icon, VoidCallback onPressed) {
+    return Container(
+      decoration: BoxDecoration(
+        color: secondaryAccentColor.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: secondaryAccentColor.withOpacity(0.5)),
+      ),
+      child: IconButton(
+        icon: Icon(icon, color: darkPrimaryColor),
+        onPressed: onPressed,
       ),
     );
   }

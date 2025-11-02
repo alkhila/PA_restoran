@@ -55,7 +55,7 @@ class ApiService {
         {
           "idMeal": "99902",
           "strMeal": "Es Teh Manis Jumbo",
-          "strMealThumb": "assets/images/teh.jpg",
+          "strMealThumb": "assets/images/es_teh.jpeg",
           "type": "Minuman",
           "price": 12000.0, // Harga Statis Minuman
         },
