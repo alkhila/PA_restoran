@@ -112,7 +112,11 @@ class _LBSPageState extends State<LBSPage> {
         width: 80.0,
         height: 80.0,
         point: _userLocation,
-        child: Icon(Icons.person_pin_circle, color: accentColor, size: 40),
+        child: Icon(
+          Icons.person_pin_circle,
+          color: Color(0xFF703B3B),
+          size: 40,
+        ),
       ),
     );
 
@@ -122,11 +126,6 @@ class _LBSPageState extends State<LBSPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Cabang Terdekat (LBS)'),
-        backgroundColor: brownColor,
-        foregroundColor: Colors.white,
-      ),
       body: Column(
         children: [
           Padding(
@@ -159,7 +158,7 @@ class _LBSPageState extends State<LBSPage> {
                   findNearestBranch(),
                   style: TextStyle(
                     fontSize: 20,
-                    color: accentColor,
+                    color: Color(0xFF703B3B),
                     fontWeight: FontWeight.bold,
                   ),
                 ),
