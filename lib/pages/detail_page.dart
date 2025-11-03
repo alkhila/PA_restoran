@@ -149,7 +149,7 @@ class _DetailPageState extends State<DetailPage> {
               height: MediaQuery.of(context).size.height * 0.6,
               padding: const EdgeInsets.fromLTRB(25, 30, 25, 0),
               decoration: const BoxDecoration(
-                color: Colors.white,
+                color: Color.fromARGB(255, 249, 245, 241),
                 borderRadius: BorderRadius.vertical(top: Radius.circular(35)),
               ),
               child: Column(
@@ -170,16 +170,6 @@ class _DetailPageState extends State<DetailPage> {
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.star,
-                            color: secondaryAccentColor,
-                            size: 20,
-                          ),
-                          const Text("4.9", style: TextStyle(fontSize: 16)),
-                        ],
                       ),
                     ],
                   ),

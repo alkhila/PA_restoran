@@ -527,7 +527,7 @@ class _HomePageState extends State<HomePage> {
                     style: TextStyle(
                       fontSize: 14,
                       color: _isLocating
-                          ? Colors.blue
+                          ? Color(0xFF703B3B)
                           : darkPrimaryColor.withOpacity(0.8),
                     ),
                     textAlign: TextAlign.center,
@@ -537,7 +537,7 @@ class _HomePageState extends State<HomePage> {
                     onPressed: _isLocating ? null : _trackLocation,
                     icon: _isLocating
                         ? const SizedBox(
-                            width: 16,
+                            width: 50,
                             height: 16,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
@@ -557,7 +557,8 @@ class _HomePageState extends State<HomePage> {
                   // --- AKHIR LBS FEATURE ---
 
                   // --- Konversi Waktu (Warna Button Dark) ---
-                  ElevatedButton.icon(
+                  ElevatedButton(
+                    // Mengubah dari ElevatedButton.icon
                     onPressed: () {
                       Navigator.push(
                         context,
@@ -566,25 +567,32 @@ class _HomePageState extends State<HomePage> {
                         ),
                       );
                     },
-                    icon: const Icon(Icons.access_time),
-                    label: const Text(
-                      'Konversi Waktu (WIB, WITA, WIT, London)',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: darkPrimaryColor,
                       foregroundColor: Colors.white,
                       minimumSize: const Size(double.infinity, 50),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(50),
                       ),
+                    ),
+                    child: const Row(
+                      // Menggunakan Row untuk menengahkan konten
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.access_time),
+                        SizedBox(width: 8),
+                        Text(
+                          'Konversi Waktu',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 20), // Jarak antar tombol
-                  // --- Riwayat Pembelian Button (BARU) ---
+                  // --- Riwayat Pembelian Button ---
                   ElevatedButton.icon(
                     onPressed: () {
                       // Navigasi ke ReceiptPage yang menampilkan Riwayat Pembelian
@@ -605,11 +613,11 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: darkPrimaryColor,
+                      backgroundColor: Color(0xFF703B3B),
                       foregroundColor: darkPrimaryColor,
                       minimumSize: const Size(double.infinity, 50),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(50),
                       ),
                     ),
                   ),
