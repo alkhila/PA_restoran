@@ -5,25 +5,23 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:async'; // [WAJIB] Diperlukan untuk Timer
+import 'dart:async';
 
 import '../models/cart_item_model.dart';
 import '../models/purchase_history_model.dart';
 import '../services/currency_service.dart';
 import '../services/location_service.dart';
-// import 'payment_success_page.dart'; // DIHAPUS - Logika dipindahkan ke ReceiptPage
 
-// --- DEFINISI WARNA KONSISTEN DARI PALET HOME_PAGE ---
+const Color brownColor = Color(0xFF4E342E);
+const Color accentColor = Color(0xFFFFB300);
 const Color darkPrimaryColor = Color(0xFF703B3B);
 const Color secondaryAccentColor = Color(0xFFA18D6D);
 const Color lightBackgroundColor = Color(0xFFE1D0B3);
-// Note: Penggunaan brownColor dan accentColor telah diganti
 
 // ======================================================
 // Halaman Struk Pembayaran / Riwayat Pembelian (Class ReceiptPage)
 // ======================================================
 class ReceiptPage extends StatefulWidget {
-  // [MODIFIKASI] Tambahkan flag untuk menandai dari checkout
   final bool isFromCheckout;
 
   const ReceiptPage({super.key, this.isFromCheckout = false});
@@ -34,7 +32,6 @@ class ReceiptPage extends StatefulWidget {
 
 class _ReceiptPageState extends State<ReceiptPage> {
   String _currentUserEmail = '';
-  // State untuk mengontrol tampilan sukses sementara
   bool _showSuccessMessage = false;
 
   @override
@@ -42,7 +39,6 @@ class _ReceiptPageState extends State<ReceiptPage> {
     super.initState();
     _loadCurrentUserEmail();
 
-    // Logika untuk menampilkan pesan sukses jika datang dari checkout
     if (widget.isFromCheckout) {
       _showSuccessMessage = true;
       Timer(const Duration(seconds: 3), () {
@@ -110,8 +106,23 @@ class _ReceiptPageState extends State<ReceiptPage> {
               ),
               const SizedBox(height: 10),
               Text(
+                'Pesanan Anda berhasil dibuat dan dibayar.', // NEW MESSAGE
+                style: TextStyle(fontSize: 18, color: darkPrimaryColor),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                'Silakan ambil pesanan Anda di cabang terdekat\ndengan menunjukkan riwayat pembelian ini.', // NEW PICKUP INSTRUCTION
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: secondaryAccentColor,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
                 'Anda akan diarahkan ke riwayat pembelian...',
-                style: TextStyle(fontSize: 16, color: secondaryAccentColor),
+                style: TextStyle(fontSize: 14, color: secondaryAccentColor),
               ),
             ],
           ),
@@ -362,7 +373,6 @@ class _CheckoutDetailPageState extends State<CheckoutDetailPage> {
     // 3. Navigasi ke Halaman ReceiptPage dengan flag sukses
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
-        // Melewati flag isFromCheckout: true
         builder: (context) => const ReceiptPage(isFromCheckout: true),
       ),
     );
@@ -454,7 +464,6 @@ class _CheckoutDetailPageState extends State<CheckoutDetailPage> {
                         const Divider(color: secondaryAccentColor),
                         // List Item
                         Container(
-                          // Container polos, hanya untuk padding dan latar belakang
                           color: Color(0xFFE1D0B3),
                           padding: const EdgeInsets.all(10.0),
                           child: Column(
@@ -507,9 +516,41 @@ class _CheckoutDetailPageState extends State<CheckoutDetailPage> {
                   ),
                 ),
 
+                // [BARU] Instruksi Pengambilan sebelum total
+                Padding(
+                  padding: const EdgeInsets.only(
+                    left: 20.0,
+                    right: 20.0,
+                    bottom: 10.0,
+                  ),
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: secondaryAccentColor.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: secondaryAccentColor),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.store, color: darkPrimaryColor),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Silakan ambil produk di cabang terdekat setelah pembayaran berhasil.',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: darkPrimaryColor,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
                 // --- 2. Pembayaran & Konversi (FIXED BOTTOM AREA - TANPA CARD) ---
                 Container(
-                  // Menjadi fixed area untuk total dan tombol
                   color: lightBackgroundColor,
                   padding: const EdgeInsets.only(
                     top: 10.0,
@@ -519,13 +560,13 @@ class _CheckoutDetailPageState extends State<CheckoutDetailPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Subtotal (TANPA CARD)
+                      // Subtotal
                       _buildPriceRow(
                         'Subtotal Harga (IDR)',
                         'Rp ${widget.totalPrice.toStringAsFixed(0)}',
                       ),
 
-                      // Pilihan Mata Uang (TANPA CARD)
+                      // Pilihan Mata Uang
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -566,7 +607,7 @@ class _CheckoutDetailPageState extends State<CheckoutDetailPage> {
                       ),
                       const Divider(height: 20, color: darkPrimaryColor),
 
-                      // Total Akhir Konversi (MEPET KE TOMBOL) (TANPA CARD)
+                      // Total Akhir Konversi
                       _buildPriceRow(
                         'Total Pembayaran',
                         '$_targetCurrency ${_convertedAmount.toStringAsFixed(2)}',
