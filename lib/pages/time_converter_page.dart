@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'dart:async';
 
-const Color brownColor = Color(0xFF4E342E);
-const Color accentColor = Color(0xFFFFB300);
+const Color darkPrimaryColor = Color(0xFF703B3B);
+const Color secondaryAccentColor = Color(0xFFA18D6D);
+const Color lightBackgroundColor = Color(0xFFE1D0B3);
 
 class TimeConverterPage extends StatefulWidget {
   const TimeConverterPage({super.key});
@@ -14,7 +15,6 @@ class TimeConverterPage extends StatefulWidget {
 
 class _TimeConverterPageState extends State<TimeConverterPage> {
   DateTime _currentTime = DateTime.now();
-
   Timer? _timer;
 
   final List<Map<String, dynamic>> timeZones = [
@@ -52,6 +52,7 @@ class _TimeConverterPageState extends State<TimeConverterPage> {
   String _formatTime(DateTime wibTime, int targetOffset) {
     const int wibOffsetHours = 7;
     final utcTime = wibTime.subtract(const Duration(hours: wibOffsetHours));
+
     final targetTime = utcTime.add(Duration(hours: targetOffset));
     return DateFormat('HH:mm:ss').format(targetTime);
   }
@@ -59,9 +60,10 @@ class _TimeConverterPageState extends State<TimeConverterPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: lightBackgroundColor,
       appBar: AppBar(
         title: const Text('Konversi Waktu & Zona'),
-        backgroundColor: brownColor,
+        backgroundColor: darkPrimaryColor,
         foregroundColor: Colors.white,
       ),
       body: Padding(
@@ -74,15 +76,14 @@ class _TimeConverterPageState extends State<TimeConverterPage> {
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: brownColor,
+                color: darkPrimaryColor,
               ),
             ),
             Text(
-              // Menampilkan tanggal dan waktu WIB dari perangkat
               DateFormat('dd MMMM yyyy, HH:mm:ss').format(_currentTime),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 24,
-                color: accentColor,
+                color: secondaryAccentColor,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -93,7 +94,7 @@ class _TimeConverterPageState extends State<TimeConverterPage> {
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: brownColor,
+                color: darkPrimaryColor,
               ),
             ),
             const SizedBox(height: 10),
@@ -112,22 +113,21 @@ class _TimeConverterPageState extends State<TimeConverterPage> {
                     elevation: 2,
                     margin: const EdgeInsets.symmetric(vertical: 8),
                     child: ListTile(
+                      tileColor: Color(0xFFE1D0B3),
                       title: Text(
                         zone['name'],
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          color: brownColor,
+                          color: darkPrimaryColor,
                         ),
                       ),
                       subtitle: Text(
                         'UTC ${zone['offset'] > 0 ? '+' : ''}${zone['offset']}',
+                        style: TextStyle(color: secondaryAccentColor),
                       ),
                       trailing: Text(
                         displayTime,
-                        style: const TextStyle(
-                          fontSize: 24,
-                          color: accentColor,
-                        ),
+                        style: TextStyle(fontSize: 24, color: darkPrimaryColor),
                       ),
                     ),
                   );
