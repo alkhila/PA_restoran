@@ -1,5 +1,3 @@
-// File: lib/pages/register_page.dart (MODIFIED - HASHING)
-
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:crypto/crypto.dart';
@@ -7,7 +5,6 @@ import 'dart:convert';
 import '../models/user_model.dart';
 import '../services/notification_service.dart';
 
-// Definisi warna baru
 const Color primaryColor = Color(0xFF703B3B);
 const Color secondaryColor = Color(0xFFA18D6D);
 const Color backgroundColor = Color(0xFFE1D0B3);
@@ -28,7 +25,6 @@ class _RegisterPageState extends State<RegisterPage> {
 
   bool _isLoading = false;
 
-  // --- FUNGSI HASHING PASSWORD ---
   String _hashPassword(String password) {
     final bytes = utf8.encode(password);
     final digest = sha256.convert(bytes);
@@ -41,7 +37,6 @@ class _RegisterPageState extends State<RegisterPage> {
     final String password = _passwordController.text;
     final String confirmPassword = _confirmPasswordController.text;
 
-    // --- Validasi Input ---
     if (name.isEmpty ||
         email.isEmpty ||
         password.isEmpty ||
@@ -76,7 +71,6 @@ class _RegisterPageState extends State<RegisterPage> {
       return;
     }
 
-    // --- SIMPAN USER BARU (MENGGUNAKAN HASH) ---
     final String hashedPassword = _hashPassword(password);
     final newUser = UserModel(
       email: email,
@@ -85,7 +79,6 @@ class _RegisterPageState extends State<RegisterPage> {
     );
     await userBox.add(newUser);
 
-    // Tampilkan notifikasi lokal
     await NotificationService().showNotification(
       id: 1,
       title: 'Registrasi Berhasil 🎉',
@@ -215,7 +208,6 @@ class _RegisterPageState extends State<RegisterPage> {
       body: SingleChildScrollView(
         child: Column(
           children: <Widget>[
-            // --- Bagian Atas dengan Gambar ---
             Stack(
               clipBehavior: Clip.none,
               alignment: Alignment.bottomCenter,
@@ -233,7 +225,6 @@ class _RegisterPageState extends State<RegisterPage> {
                     borderRadius: const BorderRadius.vertical(
                       bottom: Radius.circular(30),
                     ),
-                    // Menggunakan image_24f26a.jpg untuk latar belakang
                     child: Image.asset(
                       'assets/images/cover.jpg',
                       fit: BoxFit.cover,
@@ -247,7 +238,6 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                   ),
                 ),
-                // --- Tab Selector (Sign In / Sign Up) ---
                 Positioned(
                   bottom: -20,
                   child: Container(
@@ -277,7 +267,6 @@ class _RegisterPageState extends State<RegisterPage> {
             ),
             const SizedBox(height: 50),
 
-            // --- Form Register ---
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 40.0),
               child: Column(
@@ -308,7 +297,6 @@ class _RegisterPageState extends State<RegisterPage> {
                     obscureText: true,
                   ),
                   const SizedBox(height: 40),
-                  // Tombol Sign Up
                   _buildActionButton(
                     label: _isLoading ? 'Loading...' : 'Sign Up',
                     onPressed: _isLoading ? () {} : _register,

@@ -1,14 +1,11 @@
-// File: lib/pages/lbs_page.dart
-
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:flutter_map/flutter_map.dart'; // Import Flutter Map
-import 'package:latlong2/latlong.dart'; // Import LatLong2
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 
 const Color brownColor = Color(0xFF4E342E);
 const Color accentColor = Color(0xFFFFB300);
 
-// --- DATA CABANG DIY ---
 final List<Map<String, dynamic>> branches = [
   {'name': 'Cabang UPN (Pusat)', 'lat': -7.760166, 'lon': 110.407981},
   {'name': 'Cabang Malioboro', 'lat': -7.791550, 'lon': 110.366479},
@@ -23,7 +20,7 @@ class LBSPage extends StatefulWidget {
 }
 
 class _LBSPageState extends State<LBSPage> {
-  LatLng _userLocation = const LatLng(-7.78, 110.37); // Default Jogja
+  LatLng _userLocation = const LatLng(-7.78, 110.37);
   bool _isLoading = true;
   String _status = 'Mencari lokasi Anda...';
 
@@ -33,7 +30,6 @@ class _LBSPageState extends State<LBSPage> {
     _getCurrentLocation();
   }
 
-  // --- Mendapatkan Lokasi Pengguna ---
   Future<void> _getCurrentLocation() async {
     try {
       Position position = await Geolocator.getCurrentPosition(
@@ -53,7 +49,6 @@ class _LBSPageState extends State<LBSPage> {
     }
   }
 
-  // --- Menghitung Cabang Terdekat ---
   String findNearestBranch() {
     if (_isLoading) return 'Menunggu lokasi...';
 
@@ -78,11 +73,8 @@ class _LBSPageState extends State<LBSPage> {
     return nearestBranchName;
   }
 
-  // --- Membuat Marker untuk Peta ---
   List<Marker> _buildMarkers() {
     List<Marker> markers = [];
-
-    // Marker Cabang
     for (var branch in branches) {
       markers.add(
         Marker(
@@ -106,7 +98,6 @@ class _LBSPageState extends State<LBSPage> {
       );
     }
 
-    // Marker Lokasi User
     markers.add(
       Marker(
         width: 80.0,
@@ -172,8 +163,7 @@ class _LBSPageState extends State<LBSPage> {
                 ? Center(child: CircularProgressIndicator(color: accentColor))
                 : FlutterMap(
                     options: MapOptions(
-                      initialCenter:
-                          _userLocation, // Center peta ke lokasi user
+                      initialCenter: _userLocation,
                       initialZoom: 13.0,
                     ),
                     children: [
@@ -182,10 +172,7 @@ class _LBSPageState extends State<LBSPage> {
                             "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
                         userAgentPackageName: 'com.example.pa_restoran2',
                       ),
-                      MarkerLayer(
-                        markers:
-                            _buildMarkers(), // Tampilkan marker cabang dan user
-                      ),
+                      MarkerLayer(markers: _buildMarkers()),
                     ],
                   ),
           ),

@@ -1,18 +1,14 @@
-// File: lib/services/api_service.dart
-
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
-import 'dart:math'; // Wajib untuk harga acak
+import 'dart:math';
 
 class ApiService {
   final String _baseUrl = 'https://www.themealdb.com/api/json/v1/1';
 
   Future<List<dynamic>> fetchMenu() async {
     List<dynamic> allMeals = [];
-    final Random random = Random(); // Instansiasi untuk harga acak
-
-    // Kategori Makanan Berat/Junk Food: Chicken dan Beef
+    final Random random = Random();
     List<String> foodCategories = ['Chicken', 'Beef'];
 
     try {
@@ -25,13 +21,11 @@ class ApiService {
           final data = json.decode(response.body);
 
           if (data != null && data['meals'] is List) {
-            // --- PENAMBAHAN HARGA STATIS UNTUK MAKANAN ---
             List<Map<String, dynamic>> categorizedMeals =
                 (data['meals'] as List)
                     .map(
                       (meal) => Map<String, dynamic>.from(meal)
                         ..['type'] = 'Makanan'
-                        // Harga acak (simulasi) antara 30.000 dan 80.000
                         ..['price'] = (random.nextInt(50) + 30) * 1000.0,
                     )
                     .toList();
@@ -43,28 +37,27 @@ class ApiService {
         }
       }
 
-      // --- 2. Tambahkan Minuman (Statis) dan Harga ---
       allMeals.addAll([
         {
           "idMeal": "99901",
           "strMeal": "Coca-Cola Dingin",
           "strMealThumb": "assets/images/cola.jpg",
           "type": "Minuman",
-          "price": 15000.0, // Harga Statis Minuman
+          "price": 15000.0,
         },
         {
           "idMeal": "99902",
           "strMeal": "Es Teh Manis Jumbo",
           "strMealThumb": "assets/images/es_teh.jpeg",
           "type": "Minuman",
-          "price": 12000.0, // Harga Statis Minuman
+          "price": 12000.0,
         },
         {
           "idMeal": "99903",
           "strMeal": "Air Mineral Sehat",
           "strMealThumb": "assets/images/air_putih.png",
           "type": "Minuman",
-          "price": 6000.0, // Harga Statis Minuman
+          "price": 6000.0,
         },
       ]);
 

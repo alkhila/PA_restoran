@@ -1,5 +1,3 @@
-// File: lib/pages/checkout_detail_page.dart (MODIFIED - UI Checkout & Fix Error & Navigasi)
-
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
@@ -18,9 +16,6 @@ const Color darkPrimaryColor = Color(0xFF703B3B);
 const Color secondaryAccentColor = Color(0xFFA18D6D);
 const Color lightBackgroundColor = Color(0xFFE1D0B3);
 
-// ======================================================
-// Halaman Struk Pembayaran / Riwayat Pembelian (Class ReceiptPage)
-// ======================================================
 class ReceiptPage extends StatefulWidget {
   final bool isFromCheckout;
 
@@ -44,7 +39,7 @@ class _ReceiptPageState extends State<ReceiptPage> {
       Timer(const Duration(seconds: 3), () {
         if (mounted) {
           setState(() {
-            _showSuccessMessage = false; // Setelah 3 detik, tampilkan riwayat
+            _showSuccessMessage = false;
           });
         }
       });
@@ -59,7 +54,6 @@ class _ReceiptPageState extends State<ReceiptPage> {
   }
 
   void _backToHome(BuildContext context) async {
-    // Navigasi ke Home dengan membersihkan stack
     Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
   }
 
@@ -77,7 +71,6 @@ class _ReceiptPageState extends State<ReceiptPage> {
       );
     }
 
-    // --- TAMPILAN 1: PEMBAYARAN SUKSES ---
     if (_showSuccessMessage) {
       return Scaffold(
         backgroundColor: lightBackgroundColor,
@@ -85,17 +78,15 @@ class _ReceiptPageState extends State<ReceiptPage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: <Widget>[
-              // Icon Centang Besar (Sesuai gambar)
               Container(
                 padding: const EdgeInsets.all(15),
                 decoration: const BoxDecoration(
-                  color: Colors.green, // Warna Hijau standar
+                  color: Colors.green,
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(Icons.check, color: Colors.white, size: 80),
               ),
               const SizedBox(height: 30),
-              // Pesan Sukses
               Text(
                 'Payment Successful!',
                 style: TextStyle(
@@ -106,7 +97,7 @@ class _ReceiptPageState extends State<ReceiptPage> {
               ),
               const SizedBox(height: 10),
               Text(
-                'Pesanan Anda berhasil dibuat dan dibayar.', // NEW MESSAGE
+                'Pesanan Anda berhasil dibuat dan dibayar.',
                 style: TextStyle(fontSize: 18, color: darkPrimaryColor),
               ),
               const SizedBox(height: 5),
@@ -130,7 +121,6 @@ class _ReceiptPageState extends State<ReceiptPage> {
       );
     }
 
-    // --- TAMPILAN 2: RIWAYAT PEMBELIAN (Receipt List) ---
     return Scaffold(
       backgroundColor: lightBackgroundColor,
       appBar: AppBar(
@@ -218,7 +208,6 @@ class _ReceiptPageState extends State<ReceiptPage> {
                         ),
                       ),
                       const SizedBox(height: 5),
-                      // Detil item yang dibeli
                       ...record.items
                           .map(
                             (item) => Padding(
@@ -252,9 +241,6 @@ class _ReceiptPageState extends State<ReceiptPage> {
   }
 }
 
-// ======================================================
-// Halaman Detail Pembelian (Checkout Detail)
-// ======================================================
 class CheckoutDetailPage extends StatefulWidget {
   final double totalPrice;
   final List<CartItemModel> items;
@@ -336,7 +322,6 @@ class _CheckoutDetailPageState extends State<CheckoutDetailPage> {
 
   void _convertCurrency(Map<String, double> rates) {
     if (rates.containsKey(_targetCurrency)) {
-      // Dikonversi dari IDR (Total Price) ke Mata Uang Target
       final double targetRate = rates[_targetCurrency]!;
 
       setState(() {
@@ -350,7 +335,6 @@ class _CheckoutDetailPageState extends State<CheckoutDetailPage> {
       return;
     }
 
-    // 1. Simpan Riwayat Pembelian
     final historyBox = Hive.box<PurchaseHistoryModel>('historyBox');
 
     final newRecord = PurchaseHistoryModel(
@@ -362,7 +346,6 @@ class _CheckoutDetailPageState extends State<CheckoutDetailPage> {
     );
     await historyBox.add(newRecord);
 
-    // 2. Bersihkan Keranjang HANYA untuk user ini
     final cartBox = Hive.box<CartItemModel>('cartBox');
     final keysToDelete = cartBox.keys
         .where((key) => cartBox.get(key)?.userEmail == _currentUserEmail)
@@ -370,7 +353,6 @@ class _CheckoutDetailPageState extends State<CheckoutDetailPage> {
 
     await cartBox.deleteAll(keysToDelete);
 
-    // 3. Navigasi ke Halaman ReceiptPage dengan flag sukses
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
         builder: (context) => const ReceiptPage(isFromCheckout: true),
@@ -378,7 +360,6 @@ class _CheckoutDetailPageState extends State<CheckoutDetailPage> {
     );
   }
 
-  // Widget pembantu untuk tampilan ringkasan harga
   Widget _buildPriceRow(String title, String value, {bool isTotal = false}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -446,7 +427,6 @@ class _CheckoutDetailPageState extends State<CheckoutDetailPage> {
 
             return Column(
               children: [
-                // --- 1. Ringkasan Pesanan (SCROLLABLE AREA) ---
                 Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.all(20.0),
@@ -462,7 +442,6 @@ class _CheckoutDetailPageState extends State<CheckoutDetailPage> {
                           ),
                         ),
                         const Divider(color: secondaryAccentColor),
-                        // List Item
                         Container(
                           color: Color(0xFFE1D0B3),
                           padding: const EdgeInsets.all(10.0),
@@ -502,7 +481,6 @@ class _CheckoutDetailPageState extends State<CheckoutDetailPage> {
 
                         const SizedBox(height: 20),
 
-                        // Status Konversi (kecil)
                         Text(
                           'Status Konversi: $_locationStatus',
                           style: TextStyle(
@@ -516,7 +494,6 @@ class _CheckoutDetailPageState extends State<CheckoutDetailPage> {
                   ),
                 ),
 
-                // [BARU] Instruksi Pengambilan sebelum total
                 Padding(
                   padding: const EdgeInsets.only(
                     left: 20.0,
@@ -549,7 +526,6 @@ class _CheckoutDetailPageState extends State<CheckoutDetailPage> {
                   ),
                 ),
 
-                // --- 2. Pembayaran & Konversi (FIXED BOTTOM AREA - TANPA CARD) ---
                 Container(
                   color: lightBackgroundColor,
                   padding: const EdgeInsets.only(
@@ -560,13 +536,11 @@ class _CheckoutDetailPageState extends State<CheckoutDetailPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Subtotal
                       _buildPriceRow(
                         'Subtotal Harga (IDR)',
                         'Rp ${widget.totalPrice.toStringAsFixed(0)}',
                       ),
 
-                      // Pilihan Mata Uang
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -607,7 +581,6 @@ class _CheckoutDetailPageState extends State<CheckoutDetailPage> {
                       ),
                       const Divider(height: 20, color: darkPrimaryColor),
 
-                      // Total Akhir Konversi
                       _buildPriceRow(
                         'Total Pembayaran',
                         '$_targetCurrency ${_convertedAmount.toStringAsFixed(2)}',
@@ -617,7 +590,6 @@ class _CheckoutDetailPageState extends State<CheckoutDetailPage> {
                   ),
                 ),
 
-                // --- 3. Button Pembayaran ---
                 Padding(
                   padding: const EdgeInsets.all(20.0),
                   child: ElevatedButton.icon(

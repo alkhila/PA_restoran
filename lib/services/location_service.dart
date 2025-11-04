@@ -1,5 +1,3 @@
-// File: lib/services/location_service.dart
-
 import 'dart:convert';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
@@ -41,7 +39,6 @@ class LocationService {
     );
   }
 
-  // --- FUNGSI BARU: Mendapatkan Alamat LENGKAP DAN KODE NEGARA ---
   Future<Map<String, String>> getCountryCode(
     double latitude,
     double longitude,
@@ -66,31 +63,20 @@ class LocationService {
 
           return {'code': countryCode, 'name': countryName};
         } else {
-          return {
-            'code': 'ID',
-            'name': 'Indonesia (Default)',
-          }; // Default jika gagal
+          return {'code': 'ID', 'name': 'Indonesia (Default)'};
         }
       } else {
-        return {
-          'code': 'ID',
-          'name': 'Indonesia (API Error)',
-        }; // Default jika API error
+        return {'code': 'ID', 'name': 'Indonesia (API Error)'};
       }
     } catch (e) {
-      return {
-        'code': 'ID',
-        'name': 'Indonesia (Koneksi Error)',
-      }; // Default jika koneksi error
+      return {'code': 'ID', 'name': 'Indonesia (Koneksi Error)'};
     }
   }
 
-  // FUNGSI getAddressFromCoordinates (digunakan di halaman profil) tetap ada
   Future<String> getAddressFromCoordinates(
     double latitude,
     double longitude,
   ) async {
-    // ... (gunakan kode yang sudah Anda miliki untuk menampilkan alamat lengkap)
     try {
       final url = Uri.parse(
         '$_nominatimBaseUrl?lat=$latitude&lon=$longitude&format=jsonv2',

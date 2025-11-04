@@ -1,19 +1,13 @@
-// File: lib/pages/cart_page.dart (MODIFIED - USER FILTERING & QTY CONTROL)
-
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/cart_item_model.dart';
 import 'checkout_detail_page.dart';
 
-// --- DEFINISI WARNA KONSISTEN ---
 const Color darkPrimaryColor = Color(0xFF703B3B);
 const Color secondaryAccentColor = Color(0xFFA18D6D);
 const Color lightBackgroundColor = Color(0xFFE1D0B3);
 
-// =========================================================
-// 🔄 WIDGET INTERAKTIF UNTUK MENGUBAH KUANTITAS
-// =========================================================
 class _CartItemInteractive extends StatefulWidget {
   final CartItemModel item;
   final int index;
@@ -32,7 +26,6 @@ class _CartItemInteractive extends StatefulWidget {
 class _CartItemInteractiveState extends State<_CartItemInteractive> {
   final Box<CartItemModel> cartBox = Hive.box<CartItemModel>('cartBox');
 
-  // Fungsi untuk menampilkan dialog konfirmasi penghapusan
   Future<void> _confirmDelete(
     BuildContext context,
     int index,
@@ -59,7 +52,6 @@ class _CartItemInteractiveState extends State<_CartItemInteractive> {
               ),
               child: const Text('Hapus'),
               onPressed: () {
-                // Hapus item dari Hive berdasarkan index
                 cartBox.deleteAt(index);
                 Navigator.of(dialogContext).pop();
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -76,26 +68,20 @@ class _CartItemInteractiveState extends State<_CartItemInteractive> {
     );
   }
 
-  // Fungsi untuk menambah kuantitas
   void _incrementQuantity() {
     widget.item.quantity++;
-    widget.item.save(); // Menyimpan perubahan ke Hive
+    widget.item.save();
   }
 
-  // Fungsi untuk mengurangi kuantitas
   void _decrementQuantity() {
     if (widget.item.quantity > 1) {
       widget.item.quantity--;
-      widget.item.save(); // Menyimpan perubahan ke Hive
+      widget.item.save();
     } else {
-      // Jika kuantitas 1, panggil konfirmasi hapus
-      // Karena kita menggunakan filter di CartPage, index di sini adalah index filtered view,
-      // tapi Hive deleteAt tetap bekerja karena CartItemModel adalah HiveObject.
       _confirmDelete(context, widget.index, widget.item.strMeal);
     }
   }
 
-  // Widget untuk tombol +/-
   Widget _buildQuantityButton(
     IconData icon,
     VoidCallback onPressed,
@@ -126,7 +112,6 @@ class _CartItemInteractiveState extends State<_CartItemInteractive> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Gambar Item
           Container(
             width: 70,
             height: 70,
@@ -148,7 +133,6 @@ class _CartItemInteractiveState extends State<_CartItemInteractive> {
           ),
           const SizedBox(width: 15),
 
-          // Nama Item dan Harga Satuan/Total
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -164,7 +148,6 @@ class _CartItemInteractiveState extends State<_CartItemInteractive> {
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
-                // Total Harga Item
                 Text(
                   'Rp ${(item.price * item.quantity).toStringAsFixed(0)}',
                   style: TextStyle(
@@ -174,14 +157,13 @@ class _CartItemInteractiveState extends State<_CartItemInteractive> {
                   ),
                 ),
                 Text(
-                  'Rp ${(item.price).toStringAsFixed(0)} / pcs', // Harga Satuan
+                  'Rp ${(item.price).toStringAsFixed(0)} / pcs',
                   style: const TextStyle(fontSize: 12, color: Colors.black54),
                 ),
               ],
             ),
           ),
 
-          // Quantity Selector
           Row(
             children: [
               _buildQuantityButton(
@@ -209,9 +191,6 @@ class _CartItemInteractiveState extends State<_CartItemInteractive> {
   }
 }
 
-// =========================================================
-// CLASS CartPage (BACKGROUND DIUBAH SEMUA KE LIGHT)
-// =========================================================
 class CartPage extends StatefulWidget {
   const CartPage({super.key});
 
@@ -237,7 +216,6 @@ class _CartPageState extends State<CartPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Tampilkan loading jika email belum dimuat
     if (_currentUserEmail.isEmpty) {
       return Scaffold(
         backgroundColor: lightBackgroundColor,
@@ -262,14 +240,11 @@ class _CartPageState extends State<CartPage> {
           ),
         ),
         centerTitle: true,
-        actions: const [
-          // Ikon silang (close) di atas telah dihapus
-        ],
+        actions: const [],
       ),
       body: ValueListenableBuilder(
         valueListenable: Hive.box<CartItemModel>('cartBox').listenable(),
         builder: (context, Box<CartItemModel> box, _) {
-          // Filter item hanya untuk user saat ini
           final allItems = box.values.toList();
           final userItems = allItems
               .where((item) => item.userEmail == _currentUserEmail)
@@ -293,22 +268,15 @@ class _CartPageState extends State<CartPage> {
             decoration: const BoxDecoration(color: lightBackgroundColor),
             child: Column(
               children: [
-                // --- Daftar Item ---
                 Expanded(
                   child: ListView.separated(
                     padding: const EdgeInsets.symmetric(horizontal: 10),
                     itemCount: userItems.length,
                     itemBuilder: (context, index) {
-                      // Ambil item dari list yang sudah difilter
                       final item = userItems[index];
-
-                      // Dapatkan HiveObjectKey atau index global untuk operasi delete yang akurat
-                      // Cara paling aman adalah menggunakan item.key atau mencocokkan index setelah difilter
                       return _CartItemInteractive(
                         item: item,
-                        index: box.values.toList().indexOf(
-                          item,
-                        ), // Pass index global untuk Hive.deleteAt
+                        index: box.values.toList().indexOf(item),
                         currentUserEmail: _currentUserEmail,
                       );
                     },
@@ -319,7 +287,6 @@ class _CartPageState extends State<CartPage> {
                   ),
                 ),
 
-                // --- Divider ---
                 Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 20.0,
@@ -328,7 +295,6 @@ class _CartPageState extends State<CartPage> {
                   child: Divider(thickness: 1, color: secondaryAccentColor),
                 ),
 
-                // --- Area Rincian Harga (Subtotal & Total) ---
                 Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 25.0,
@@ -336,7 +302,6 @@ class _CartPageState extends State<CartPage> {
                   ),
                   child: Column(
                     children: [
-                      // Subtotal
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -358,7 +323,6 @@ class _CartPageState extends State<CartPage> {
                         ],
                       ),
 
-                      // Total
                       const SizedBox(height: 15),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -386,7 +350,6 @@ class _CartPageState extends State<CartPage> {
 
                 const SizedBox(height: 20),
 
-                // --- Tombol Checkout ---
                 Padding(
                   padding: const EdgeInsets.only(
                     left: 25.0,
@@ -400,7 +363,7 @@ class _CartPageState extends State<CartPage> {
                         MaterialPageRoute(
                           builder: (context) => CheckoutDetailPage(
                             totalPrice: subtotalPrice,
-                            items: userItems, // Hanya item user saat ini
+                            items: userItems,
                           ),
                         ),
                       );

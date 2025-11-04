@@ -1,10 +1,7 @@
-// File: lib/pages/detail_page.dart (MODIFIED - Tampilan Dikembalikan)
-
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/cart_item_model.dart';
 
-// --- DEFINISI WARNA KONSISTEN ---
 const Color brownColor = Color(0xFF4E342E);
 const Color accentColor = Color(0xFFFFB300);
 const Color darkPrimaryColor = Color(0xFF703B3B);
@@ -13,7 +10,7 @@ const Color lightBackgroundColor = Color(0xFFE1D0B3);
 
 class DetailPage extends StatefulWidget {
   final Map<String, dynamic> item;
-  final String currentUserEmail; // Parameter wajib dari HomePage
+  final String currentUserEmail;
 
   const DetailPage({
     super.key,
@@ -46,7 +43,6 @@ class _DetailPageState extends State<DetailPage> {
     _itemPrice = _basePrice;
   }
 
-  // Fungsi untuk menambah item ke keranjang
   void _addToCart() async {
     final cartBox = Hive.box<CartItemModel>('cartBox');
 
@@ -56,10 +52,9 @@ class _DetailPageState extends State<DetailPage> {
       strMealThumb: widget.item['strMealThumb'] ?? '',
       quantity: _quantity,
       price: _itemPrice,
-      userEmail: widget.currentUserEmail, // Menyimpan email user
+      userEmail: widget.currentUserEmail,
     );
 
-    // Logika pencarian harus menyertakan email user
     final existingItemIndex = cartBox.values.toList().indexWhere(
       (e) => e.idMeal == newItem.idMeal && e.userEmail == newItem.userEmail,
     );
@@ -72,13 +67,12 @@ class _DetailPageState extends State<DetailPage> {
       await cartBox.add(newItem);
     }
 
-    // Beri feedback dan kembali ke home
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
           '${_quantity}x ${newItem.strMeal} ditambahkan ke keranjang!',
         ),
-        backgroundColor: darkPrimaryColor, // Warna konsisten
+        backgroundColor: darkPrimaryColor,
       ),
     );
     Navigator.pop(context);
@@ -128,7 +122,6 @@ class _DetailPageState extends State<DetailPage> {
       ),
       body: Stack(
         children: [
-          // --- Gambar Menu ---
           SizedBox(
             height: MediaQuery.of(context).size.height * 0.45,
             width: double.infinity,
@@ -142,7 +135,6 @@ class _DetailPageState extends State<DetailPage> {
                   ),
           ),
 
-          // --- Detail Container ---
           Align(
             alignment: Alignment.bottomCenter,
             child: Container(
@@ -155,7 +147,6 @@ class _DetailPageState extends State<DetailPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  // Nama Menu dan Rating
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -179,7 +170,6 @@ class _DetailPageState extends State<DetailPage> {
                   ),
                   const Divider(height: 30),
 
-                  // --- Quantity Selector ---
                   Text(
                     'Jumlah Pesanan',
                     style: TextStyle(
@@ -216,7 +206,6 @@ class _DetailPageState extends State<DetailPage> {
                   ),
                   const Divider(height: 30),
 
-                  // --- Deskripsi Statis (About) ---
                   Text(
                     'About',
                     style: TextStyle(
@@ -227,7 +216,6 @@ class _DetailPageState extends State<DetailPage> {
                   ),
                   const SizedBox(height: 8),
 
-                  // Menggunakan Expanded dan SingleChildScrollView
                   Expanded(
                     child: SingleChildScrollView(
                       child: Text(
@@ -240,7 +228,6 @@ class _DetailPageState extends State<DetailPage> {
                     ),
                   ),
 
-                  // --- Floating Button Add to Cart (Bottom Bar) ---
                   Padding(
                     padding: const EdgeInsets.only(bottom: 25.0),
                     child: Row(

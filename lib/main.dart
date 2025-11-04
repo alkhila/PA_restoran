@@ -9,28 +9,20 @@ import 'pages/home_page.dart';
 import 'models/cart_item_model.dart';
 import 'models/purchase_history_model.dart';
 
-// Definisi warna yang konsisten
 const Color accentColor = Color(0xFFFFB300);
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
 
-  // Daftarkan Adapter (Asumsi Cart dan History menggunakan TypeId baru 3 & 4)
-  Hive.registerAdapter(UserModelAdapter()); // TypeId 0
-  Hive.registerAdapter(
-    CartItemModelAdapter(),
-  ); // TypeId 3 (Harus dijalankan build_runner!)
-  Hive.registerAdapter(
-    PurchaseHistoryModelAdapter(),
-  ); // TypeId 4 (Harus dijalankan build_runner!)
+  Hive.registerAdapter(UserModelAdapter());
+  Hive.registerAdapter(CartItemModelAdapter());
+  Hive.registerAdapter(PurchaseHistoryModelAdapter());
 
-  // Buka Box
   await Hive.openBox<UserModel>('userBox');
   await Hive.openBox<CartItemModel>('cartBox');
   await Hive.openBox<PurchaseHistoryModel>('historyBox');
 
-  // 🔔 Inisialisasi notifikasi lokal
   await NotificationService().init();
 
   runApp(const MyApp());
@@ -45,8 +37,6 @@ class MyApp extends StatelessWidget {
       title: 'FastFood App TA',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(primarySwatch: Colors.brown, fontFamily: 'Roboto'),
-
-      // MENGATUR HOME PROPERTY UNTUK CEK SESI (SPLASH SCREEN LOGIC)
       home: FutureBuilder<bool>(
         future: _checkLoginStatus(),
         builder: (context, snapshot) {
@@ -59,7 +49,6 @@ class MyApp extends StatelessWidget {
         },
       ),
 
-      // DEFINISI ROUTE BERNAMA
       routes: {
         '/login': (context) => const LoginPage(),
         '/register': (context) => const RegisterPage(),
@@ -68,10 +57,8 @@ class MyApp extends StatelessWidget {
     );
   }
 
-  // Fungsi Session Check: Memeriksa status login dari SharedPreferences
   Future<bool> _checkLoginStatus() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
-    // Tambahkan juga pemeriksaan apakah email user aktif ada
     final isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
     final userEmailExists = prefs.getString('current_user_email') != null;
 

@@ -1,10 +1,7 @@
-// File: lib/models/cart_item_model.dart (MODIFIED FOR USER-SPECIFIC CART)
-
 import 'package:hive/hive.dart';
 
 part 'cart_item_model.g.dart';
 
-// Ganti TypeId (asumsi 3 adalah TypeId baru untuk model ini)
 @HiveType(typeId: 3)
 class CartItemModel extends HiveObject {
   @HiveField(0)
@@ -22,7 +19,7 @@ class CartItemModel extends HiveObject {
   @HiveField(4)
   late double price;
 
-  @HiveField(5) // FIELD BARU UNTUK KEPEMILIKAN
+  @HiveField(5)
   late String userEmail;
 
   CartItemModel({

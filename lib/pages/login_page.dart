@@ -1,5 +1,3 @@
-// File: lib/pages/login_page.dart (MODIFIED - HASHING & SAVE EMAIL)
-
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -8,7 +6,6 @@ import 'dart:convert';
 import '../models/user_model.dart';
 import 'home_page.dart';
 
-// Definisi warna yang konsisten
 const Color primaryColor = Color(0xFF703B3B);
 const Color secondaryColor = Color(0xFFA18D6D);
 const Color backgroundColor = Color(0xFFE1D0B3);
@@ -24,7 +21,6 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
-  // --- FUNGSI HASHING PASSWORD ---
   String _hashPassword(String password) {
     final bytes = utf8.encode(password);
     final digest = sha256.convert(bytes);
@@ -45,7 +41,6 @@ class _LoginPageState extends State<LoginPage> {
     final userBox = Hive.box<UserModel>('userBox');
     final String inputHashedPassword = _hashPassword(password);
 
-    // Cari pengguna berdasarkan email dan HASHED password
     final user = userBox.values.firstWhere(
       (user) => user.email == email && user.password == inputHashedPassword,
       orElse: () => UserModel(email: '', password: '', username: ''),
@@ -55,7 +50,6 @@ class _LoginPageState extends State<LoginPage> {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
 
       await prefs.setBool('isLoggedIn', true);
-      // Simpan email user aktif
       await prefs.setString('current_user_email', user.email);
       await prefs.setString('userName', user.username);
 
@@ -175,7 +169,6 @@ class _LoginPageState extends State<LoginPage> {
       body: SingleChildScrollView(
         child: Column(
           children: <Widget>[
-            // --- Bagian Atas dengan Gambar ---
             Stack(
               clipBehavior: Clip.none,
               alignment: Alignment.bottomCenter,
@@ -206,7 +199,6 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
                 ),
-                // --- Tab Selector (Sign In / Sign Up) ---
                 Positioned(
                   bottom: -20,
                   child: Container(
@@ -238,7 +230,6 @@ class _LoginPageState extends State<LoginPage> {
             ),
             const SizedBox(height: 50),
 
-            // --- Form Login ---
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 40.0),
               child: Column(
@@ -256,7 +247,6 @@ class _LoginPageState extends State<LoginPage> {
                     obscureText: true,
                   ),
                   const SizedBox(height: 170),
-                  // Tombol Sign In
                   _buildActionButton(
                     label: 'Sign In',
                     onPressed: _login,

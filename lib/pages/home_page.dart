@@ -1,5 +1,3 @@
-// File: lib/pages/home_page.dart (MODIFIED - TAMPILAN FINAL & LOGIC)
-
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
@@ -11,14 +9,12 @@ import 'lbs_page.dart';
 import 'detail_page.dart';
 import 'login_page.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'checkout_detail_page.dart'; // [BARU] Import untuk mengakses ReceiptPage
+import 'checkout_detail_page.dart';
 
-// --- DEFINISI WARNA KONSISTEN DARI PALET PALING AKHIR ---
 const Color darkPrimaryColor = Color(0xFF703B3B);
 const Color secondaryAccentColor = Color(0xFFA18D6D);
 const Color lightBackgroundColor = Color(0xFFE1D0B3);
 
-// Enum untuk opsi filter
 enum MenuFilter { all, makanan, minuman }
 
 class HomePage extends StatefulWidget {
@@ -37,11 +33,9 @@ class _HomePageState extends State<HomePage> {
   final ApiService _apiService = ApiService();
   final LocationService _locationService = LocationService();
 
-  // State untuk LBS
   String _currentAddress = 'Klik Lacak Lokasi';
   bool _isLocating = false;
 
-  // State untuk Search dan Filter
   String _searchQuery = '';
   MenuFilter _currentFilter = MenuFilter.all;
 
@@ -52,7 +46,6 @@ class _HomePageState extends State<HomePage> {
     _menuFuture = _apiService.fetchMenu();
   }
 
-  // --- Session Management ---
   void _loadUserInfo() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -61,7 +54,6 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  // FUNGSI KONFIRMASI LOGOUT
   void _confirmLogout() {
     showDialog(
       context: context,
@@ -102,7 +94,6 @@ class _HomePageState extends State<HomePage> {
     ).pushNamedAndRemoveUntil('/login', (Route<dynamic> route) => false);
   }
 
-  // FUNGSI LBS: Lacak Lokasi Saat Ini
   void _trackLocation() async {
     setState(() {
       _isLocating = true;
@@ -129,7 +120,6 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  // PANGGILAN DETAIL PAGE (Melewatkan Email)
   void _openDetailPage(Map<String, dynamic> item) {
     if (_currentUserEmail.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -147,18 +137,16 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // --- Widget 1: Katalog Menu (REVISI TAMPILAN & WARNA) ---
   Widget _buildMenuCatalog() {
     return Column(
       children: [
-        // --- Header Selamat Datang, Search Bar, & Categories ---
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                "Welcome, $_userName", // Sapaan
+                "Welcome, $_userName",
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
@@ -167,7 +155,6 @@ class _HomePageState extends State<HomePage> {
               ),
               const SizedBox(height: 15),
 
-              // --- Search Bar (Mirip Desain Gambar) ---
               TextField(
                 onChanged: (value) {
                   setState(() {
@@ -176,10 +163,7 @@ class _HomePageState extends State<HomePage> {
                 },
                 decoration: InputDecoration(
                   hintText: "Search...",
-                  prefixIcon: Icon(
-                    Icons.search,
-                    color: darkPrimaryColor,
-                  ), // Warna Dark
+                  prefixIcon: Icon(Icons.search, color: darkPrimaryColor),
 
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(15),
@@ -195,7 +179,6 @@ class _HomePageState extends State<HomePage> {
               ),
               const SizedBox(height: 15),
 
-              // --- Filter Categories (Mirip Desain Gambar) ---
               Padding(
                 padding: const EdgeInsets.only(bottom: 5.0),
                 child: Text(
@@ -228,7 +211,6 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
 
-        // --- Grid View Menu (Scrolling Content) ---
         Expanded(
           child: FutureBuilder<List<dynamic>>(
             future: _menuFuture,
@@ -245,7 +227,6 @@ class _HomePageState extends State<HomePage> {
                   ),
                 );
               } else if (snapshot.hasData && snapshot.data!.isNotEmpty) {
-                // --- Logika Filtering dan Searching ---
                 final rawMenuList = snapshot.data!;
 
                 List<dynamic> filteredList = rawMenuList.where((item) {
@@ -276,7 +257,6 @@ class _HomePageState extends State<HomePage> {
                   );
                 }
 
-                // Menggunakan GridView.builder untuk tampilan 2 kolom
                 return GridView.builder(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 20,
@@ -296,7 +276,6 @@ class _HomePageState extends State<HomePage> {
                         (item['type'] == 'Minuman' &&
                         (item['strMealThumb'] as String).startsWith('assets/'));
 
-                    // Card Item Menu
                     return InkWell(
                       onTap: () => _openDetailPage(item),
                       borderRadius: BorderRadius.circular(15),
@@ -377,7 +356,6 @@ class _HomePageState extends State<HomePage> {
                                             fontSize: 14,
                                           ),
                                         ),
-                                        // Tombol Add menggunakan darkPrimaryColor
                                         Container(
                                           padding: const EdgeInsets.all(5),
                                           decoration: BoxDecoration(
@@ -417,7 +395,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // --- Widget 2: Halaman Profil ---
   Widget _buildProfilePage() {
     return Padding(
       padding: const EdgeInsets.all(20.0),
@@ -429,7 +406,6 @@ class _HomePageState extends State<HomePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // 1. Foto dengan Path
                   Container(
                     width: 100,
                     height: 100,
@@ -451,7 +427,6 @@ class _HomePageState extends State<HomePage> {
                   ),
                   const SizedBox(height: 10),
 
-                  // 2. Nama dan NIM Mahasiswa
                   const Text(
                     'Alkhila Syadza Fariha / 124230090',
                     style: TextStyle(
@@ -461,13 +436,11 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ),
 
-                  // 3. Status Mahasiswa
                   const Text(
                     'Mahasiswa Pemrograman Aplikasi Mobile',
                     style: TextStyle(color: darkPrimaryColor, fontSize: 14),
                   ),
 
-                  // --- CARD KESAN DAN PESAN ---
                   Card(
                     elevation: 4,
                     child: Padding(
@@ -502,7 +475,6 @@ class _HomePageState extends State<HomePage> {
                   ),
                   const Divider(height: 40, color: Colors.grey),
 
-                  // 5. Username User yang Login
                   Text(
                     'Username: $_userName',
                     style: TextStyle(
@@ -513,7 +485,6 @@ class _HomePageState extends State<HomePage> {
                   ),
                   const SizedBox(height: 20),
 
-                  // --- LBS FEATURE: Lokasi User (Warna Button Dark) ---
                   Text(
                     'Lokasi Saya:',
                     style: TextStyle(
@@ -554,11 +525,8 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ),
                   const SizedBox(height: 40),
-                  // --- AKHIR LBS FEATURE ---
 
-                  // --- Konversi Waktu (Warna Button Dark) ---
                   ElevatedButton(
-                    // Mengubah dari ElevatedButton.icon
                     onPressed: () {
                       Navigator.push(
                         context,
@@ -576,7 +544,6 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                     child: const Row(
-                      // Menggunakan Row untuk menengahkan konten
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(Icons.access_time),
@@ -591,11 +558,9 @@ class _HomePageState extends State<HomePage> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 20), // Jarak antar tombol
-                  // --- Riwayat Pembelian Button ---
+                  const SizedBox(height: 20),
                   ElevatedButton.icon(
                     onPressed: () {
-                      // Navigasi ke ReceiptPage yang menampilkan Riwayat Pembelian
                       Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -621,8 +586,7 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 40), // Jarak sebelum Logout
-                  // 8. Tombol Logout
+                  const SizedBox(height: 40),
                   ElevatedButton.icon(
                     onPressed: _confirmLogout,
                     icon: const Icon(Icons.logout),
@@ -643,13 +607,12 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // Widget pembantu untuk Filter Chip (Warna Dark/Light)
   Widget _buildFilterChip(String label, MenuFilter filter) {
     bool isSelected = _currentFilter == filter;
     return ChoiceChip(
       label: Text(label),
       selected: isSelected,
-      selectedColor: darkPrimaryColor, // Warna Dark saat terpilih
+      selectedColor: darkPrimaryColor,
       onSelected: (selected) {
         if (selected) {
           setState(() {
@@ -658,7 +621,6 @@ class _HomePageState extends State<HomePage> {
         }
       },
       labelStyle: TextStyle(
-        // Teks menjadi Putih saat terpilih
         color: isSelected ? Colors.white : darkPrimaryColor,
         fontWeight: FontWeight.bold,
       ),
@@ -674,7 +636,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // --- Widget 3 & 4: CartPage dan LBSPage ---
   Widget _buildCartPage() {
     return const CartPage();
   }
@@ -685,7 +646,6 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    // Definisikan list widget di sini
     final List<Widget> widgetOptions = <Widget>[
       _buildMenuCatalog(),
       _buildLBSPage(),
@@ -694,9 +654,8 @@ class _HomePageState extends State<HomePage> {
     ];
 
     return Scaffold(
-      backgroundColor: lightBackgroundColor, // Background utama Light
+      backgroundColor: lightBackgroundColor,
       appBar: AppBar(
-        // NAVBAR (Warna Light)
         backgroundColor: lightBackgroundColor,
         elevation: 0,
         foregroundColor: darkPrimaryColor,
@@ -704,7 +663,7 @@ class _HomePageState extends State<HomePage> {
         title: Text(
           "FastFood App",
           style: TextStyle(
-            color: darkPrimaryColor, // Teks Dark
+            color: darkPrimaryColor,
             fontWeight: FontWeight.bold,
             fontSize: 20,
           ),
@@ -712,7 +671,6 @@ class _HomePageState extends State<HomePage> {
       ),
       body: widgetOptions.elementAt(_selectedIndex),
 
-      // Bottom Navigation Bar (Warna Light)
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
@@ -737,10 +695,9 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
         currentIndex: _selectedIndex,
-        // Item terpilih Dark, tidak terpilih Secondary/Accent
         selectedItemColor: darkPrimaryColor,
         unselectedItemColor: secondaryAccentColor,
-        backgroundColor: lightBackgroundColor, // Background Nav Bar Light
+        backgroundColor: lightBackgroundColor,
         type: BottomNavigationBarType.fixed,
         onTap: (index) {
           setState(() {
