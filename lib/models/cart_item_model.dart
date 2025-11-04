@@ -28,6 +28,6 @@ class CartItemModel extends HiveObject {
     required this.strMealThumb,
     required this.quantity,
     required this.price,
-    required this.userEmail, // Wajib diisi
+    required this.userEmail,
   });
 }

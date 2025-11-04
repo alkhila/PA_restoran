@@ -25,6 +25,6 @@ class PurchaseHistoryModel extends HiveObject {
     required this.currency,
     required this.purchaseTime,
     required this.items,
-    required this.userEmail, // Wajib diisi
+    required this.userEmail,
   });
 }
