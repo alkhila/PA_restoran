@@ -10,7 +10,6 @@ import 'detail_page.dart';
 import 'login_page.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'checkout_detail_page.dart';
-import 'checkout_detail_page.dart'; // Import ini sudah ada di baris 11, tapi tetap disertakan untuk kelengkapan
 
 const Color darkPrimaryColor = Color(0xFF703B3B);
 const Color secondaryAccentColor = Color(0xFFA18D6D);
@@ -34,8 +33,7 @@ class _HomePageState extends State<HomePage> {
   final ApiService _apiService = ApiService();
   final LocationService _locationService = LocationService();
 
-  String _currentAddress = 'Klik Lacak Lokasi';
-  bool _isLocating = false;
+  // Variabel _currentAddress dan _isLocating telah dipindahkan ke LBSPage
 
   String _searchQuery = '';
   MenuFilter _currentFilter = MenuFilter.all;
@@ -95,31 +93,7 @@ class _HomePageState extends State<HomePage> {
     ).pushNamedAndRemoveUntil('/login', (Route<dynamic> route) => false);
   }
 
-  void _trackLocation() async {
-    setState(() {
-      _isLocating = true;
-      _currentAddress = 'Sedang melacak lokasi...';
-    });
-
-    try {
-      final position = await _locationService.getCurrentPosition();
-      final address = await _locationService.getAddressFromCoordinates(
-        position.latitude,
-        position.longitude,
-      );
-
-      setState(() {
-        _currentAddress = address;
-        _isLocating = false;
-      });
-    } catch (e) {
-      setState(() {
-        String errorMsg = e.toString().replaceAll('Exception: ', '');
-        _currentAddress = 'Error: $errorMsg';
-        _isLocating = false;
-      });
-    }
-  }
+  // Fungsi _trackLocation() telah dipindahkan ke LBSPage
 
   void _openDetailPage(Map<String, dynamic> item) {
     if (_currentUserEmail.isEmpty) {
@@ -142,10 +116,13 @@ class _HomePageState extends State<HomePage> {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Widget "Welcome, $_userName" telah dipindahkan ke AppBar
+              const SizedBox(height: 15),
+
               TextField(
                 onChanged: (value) {
                   setState(() {
@@ -475,47 +452,6 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ),
                   const SizedBox(height: 20),
-
-                  Text(
-                    'Lokasi Saya:',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: darkPrimaryColor,
-                    ),
-                  ),
-                  Text(
-                    _currentAddress,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: _isLocating
-                          ? Color(0xFF703B3B)
-                          : darkPrimaryColor.withOpacity(0.8),
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 10),
-                  ElevatedButton.icon(
-                    onPressed: _isLocating ? null : _trackLocation,
-                    icon: _isLocating
-                        ? const SizedBox(
-                            width: 50,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Icon(Icons.location_on),
-                    label: Text(
-                      _isLocating ? 'Melacak...' : 'Lacak Lokasi Sekarang',
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: darkPrimaryColor,
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 40),
 
                   ElevatedButton(
                     onPressed: () {
