@@ -10,6 +10,7 @@ import 'detail_page.dart';
 import 'login_page.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'checkout_detail_page.dart';
+import 'checkout_detail_page.dart'; // Import ini sudah ada di baris 11, tapi tetap disertakan untuk kelengkapan
 
 const Color darkPrimaryColor = Color(0xFF703B3B);
 const Color secondaryAccentColor = Color(0xFFA18D6D);
@@ -141,20 +142,10 @@ class _HomePageState extends State<HomePage> {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                "Welcome, $_userName",
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: darkPrimaryColor,
-                ),
-              ),
-              const SizedBox(height: 15),
-
               TextField(
                 onChanged: (value) {
                   setState(() {
@@ -660,14 +651,24 @@ class _HomePageState extends State<HomePage> {
         elevation: 0,
         foregroundColor: darkPrimaryColor,
 
+        // JUDUL STATIS: Selalu menampilkan "Welcome, [username]"
         title: Text(
-          "FastFood App",
+          "Welcome, $_userName",
           style: TextStyle(
             color: darkPrimaryColor,
             fontWeight: FontWeight.bold,
             fontSize: 20,
           ),
         ),
+
+        // ACTIONS STATIS: Selalu menampilkan tombol Logout
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            color: darkPrimaryColor,
+            onPressed: _confirmLogout, // Panggil fungsi konfirmasi logout
+          ),
+        ],
       ),
       body: widgetOptions.elementAt(_selectedIndex),
 
