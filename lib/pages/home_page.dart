@@ -33,8 +33,6 @@ class _HomePageState extends State<HomePage> {
   final ApiService _apiService = ApiService();
   final LocationService _locationService = LocationService();
 
-  // Variabel _currentAddress dan _isLocating telah dipindahkan ke LBSPage
-
   String _searchQuery = '';
   MenuFilter _currentFilter = MenuFilter.all;
 
@@ -93,8 +91,6 @@ class _HomePageState extends State<HomePage> {
     ).pushNamedAndRemoveUntil('/login', (Route<dynamic> route) => false);
   }
 
-  // Fungsi _trackLocation() telah dipindahkan ke LBSPage
-
   void _openDetailPage(Map<String, dynamic> item) {
     if (_currentUserEmail.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -120,7 +116,6 @@ class _HomePageState extends State<HomePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Widget "Welcome, $_userName" telah dipindahkan ke AppBar
               const SizedBox(height: 15),
 
               TextField(
@@ -363,6 +358,41 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // MARK: - Modified Profile List Item Widget
+  Widget _buildProfileListItem({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    // Menghapus widget Container/Card luar
+    return Column(
+      children: [
+        ListTile(
+          onTap: onTap,
+          // Set warna background ListTile agar sama dengan background halaman
+          tileColor: lightBackgroundColor,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 0,
+            vertical: 4,
+          ),
+          leading: Icon(icon, color: darkPrimaryColor, size: 28),
+          title: Text(
+            title,
+            style: TextStyle(
+              fontSize: 18,
+              color: darkPrimaryColor,
+              // Font dibuat bold (w700)
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          trailing: Icon(Icons.chevron_right, color: secondaryAccentColor),
+        ),
+        // Menggunakan Divider yang terpisah untuk kontrol yang lebih baik
+        Divider(color: secondaryAccentColor.withOpacity(0.5), height: 1),
+      ],
+    );
+  }
+
   Widget _buildProfilePage() {
     return Padding(
       padding: const EdgeInsets.all(20.0),
@@ -451,69 +481,45 @@ class _HomePageState extends State<HomePage> {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
+
                   const SizedBox(height: 20),
 
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const TimeConverterPage(),
-                        ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: darkPrimaryColor,
-                      foregroundColor: Colors.white,
-                      minimumSize: const Size(double.infinity, 50),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(50),
-                      ),
-                    ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                  // MARK: - List Style Implementation (tanpa background putih)
+                  // Menghilangkan Container dan Box Shadow agar menyatu dengan background lightBackgroundColor
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                    child: Column(
                       children: [
-                        Icon(Icons.access_time),
-                        SizedBox(width: 8),
-                        Text(
-                          'Konversi Waktu',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        _buildProfileListItem(
+                          icon: Icons.access_time,
+                          title: 'Konversi Waktu',
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const TimeConverterPage(),
+                              ),
+                            );
+                          },
+                        ),
+                        _buildProfileListItem(
+                          icon: Icons.history,
+                          title: 'Riwayat Pembelian',
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const ReceiptPage(),
+                              ),
+                            );
+                          },
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 20),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const ReceiptPage(),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.history, color: Colors.white),
-                    label: const Text(
-                      'Riwayat Pembelian',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFF703B3B),
-                      foregroundColor: darkPrimaryColor,
-                      minimumSize: const Size(double.infinity, 50),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(50),
-                      ),
-                    ),
-                  ),
+
                   const SizedBox(height: 40),
+
                   ElevatedButton.icon(
                     onPressed: _confirmLogout,
                     icon: const Icon(Icons.logout),
@@ -587,7 +593,7 @@ class _HomePageState extends State<HomePage> {
         elevation: 0,
         foregroundColor: darkPrimaryColor,
 
-        // JUDUL STATIS: Selalu menampilkan "Welcome, [username]"
+        // JUDUL STATIS
         title: Text(
           "Welcome, $_userName",
           style: TextStyle(
@@ -597,12 +603,12 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
 
-        // ACTIONS STATIS: Selalu menampilkan tombol Logout
+        // ACTIONS STATIS
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
             color: darkPrimaryColor,
-            onPressed: _confirmLogout, // Panggil fungsi konfirmasi logout
+            onPressed: _confirmLogout,
           ),
         ],
       ),
