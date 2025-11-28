@@ -517,7 +517,7 @@ class _HomePageState extends State<HomePage> {
           title: Text(
             title,
             style: TextStyle(
-              fontSize: 18,
+              fontSize: 14,
               color: darkPrimaryColor,
               fontWeight: FontWeight.w700,
             ),
@@ -625,7 +625,7 @@ class _HomePageState extends State<HomePage> {
                   Text(
                     'Username: $_userName',
                     style: TextStyle(
-                      fontSize: 18,
+                      fontSize: 16,
                       color: secondaryAccentColor,
                       fontWeight: FontWeight.w600,
                     ),
