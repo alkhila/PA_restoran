@@ -26,79 +26,52 @@ class _CartItemInteractive extends StatefulWidget {
 class _CartItemInteractiveState extends State<_CartItemInteractive> {
   final Box<CartItemModel> cartBox = Hive.box<CartItemModel>('cartBox');
 
-  Future<void> _confirmDelete(
-    BuildContext context,
-    int index,
-    String itemName,
-  ) async {
-    return showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext dialogContext) {
-        return AlertDialog(
-          title: const Text('Hapus Item'),
-          content: Text('Yakin ingin menghapus "$itemName" dari keranjang?'),
-          actions: <Widget>[
-            TextButton(
-              child: Text('Batal', style: TextStyle(color: darkPrimaryColor)),
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-              },
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: darkPrimaryColor,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Hapus'),
-              onPressed: () {
-                cartBox.deleteAt(index);
-                Navigator.of(dialogContext).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('$itemName berhasil dihapus.'),
-                    backgroundColor: darkPrimaryColor,
-                  ),
-                );
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   void _incrementQuantity() {
     widget.item.quantity++;
     widget.item.save();
   }
 
+  // [UPDATE] Logika untuk mengurangi jumlah (menghapus jika kuantitas = 1)
   void _decrementQuantity() {
     if (widget.item.quantity > 1) {
+      // Case 1: Jumlah > 1, kurangi normal
       widget.item.quantity--;
       widget.item.save();
     } else {
-      _confirmDelete(context, widget.index, widget.item.strMeal);
+      // Case 2: Jumlah == 1, hapus item dari keranjang
+      final String itemName = widget.item.strMeal;
+      final itemKey = widget.item.key;
+
+      if (itemKey != null) {
+        cartBox.delete(itemKey);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$itemName berhasil dihapus dari keranjang.'),
+            backgroundColor: darkPrimaryColor,
+          ),
+        );
+      }
     }
   }
 
   Widget _buildQuantityButton(
     IconData icon,
     VoidCallback onPressed,
-    bool isMinOne,
+    // Parameter isMinOne dihapus karena kita selalu menggunakan Icons.remove
   ) {
     return Container(
       width: 30,
       height: 30,
       decoration: BoxDecoration(
-        color: isMinOne ? Colors.grey.shade300 : darkPrimaryColor,
+        color: darkPrimaryColor,
         borderRadius: BorderRadius.circular(8),
       ),
       child: IconButton(
         padding: EdgeInsets.zero,
         iconSize: 18,
         icon: Icon(icon, color: Colors.white),
-        onPressed: isMinOne ? null : onPressed,
+        onPressed: onPressed,
       ),
     );
   }
@@ -167,9 +140,8 @@ class _CartItemInteractiveState extends State<_CartItemInteractive> {
           Row(
             children: [
               _buildQuantityButton(
-                Icons.remove,
+                Icons.remove, // [UPDATE] Ikon selalu minus
                 _decrementQuantity,
-                item.quantity == 1,
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -182,7 +154,7 @@ class _CartItemInteractiveState extends State<_CartItemInteractive> {
                   ),
                 ),
               ),
-              _buildQuantityButton(Icons.add, _incrementQuantity, false),
+              _buildQuantityButton(Icons.add, _incrementQuantity),
             ],
           ),
         ],
@@ -270,9 +242,15 @@ class _CartPageState extends State<CartPage> {
                     itemCount: userItems.length,
                     itemBuilder: (context, index) {
                       final item = userItems[index];
+                      // Menemukan kunci asli item di Hive Box (bukan index dari list yang difilter)
+                      final originalIndex = box.values.toList().indexOf(item);
+
+                      // Cek jika itemKey adalah null, kita tidak bisa membuat widget, tapi secara teori itemKey tidak boleh null di sini
+                      if (originalIndex == -1) return const SizedBox.shrink();
+
                       return _CartItemInteractive(
                         item: item,
-                        index: box.values.toList().indexOf(item),
+                        index: originalIndex,
                         currentUserEmail: _currentUserEmail,
                       );
                     },

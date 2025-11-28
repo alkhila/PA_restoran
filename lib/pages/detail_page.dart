@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/cart_item_model.dart';
-import '../models/favorite_model.dart'; // [UPDATE] Import Favorite Model
-import '../services/api_service.dart'; // Import API Service
+import '../models/favorite_model.dart';
+import '../services/api_service.dart';
 
 const Color brownColor = Color(0xFF4E342E);
 const Color accentColor = Color(0xFFFFB300);
@@ -25,14 +25,13 @@ class DetailPage extends StatefulWidget {
 }
 
 class _DetailPageState extends State<DetailPage> {
-  final ApiService _apiService = ApiService(); // Inisialisasi ApiService
-  late Future<List<String>>
-  _ingredientsFuture; // Future untuk menampung data ingredients
+  final ApiService _apiService = ApiService();
+  late Future<List<String>> _ingredientsFuture;
 
   int _quantity = 1;
   late double _itemPrice;
-  late double _basePrice;
-  bool _isFavorite = false; // [UPDATE] State untuk favorit
+  late double _basePrice; // Harga Satuan
+  bool _isFavorite = false;
 
   @override
   void initState() {
@@ -45,26 +44,51 @@ class _DetailPageState extends State<DetailPage> {
     } else if (priceData is int) {
       _basePrice = priceData.toDouble();
     } else if (priceData is num) {
-      // Handle num types
       _basePrice = priceData.toDouble();
     } else {
       _basePrice = 0.0;
     }
     _itemPrice = _basePrice;
 
-    _checkFavoriteStatus(); // [UPDATE] Cek status favorit
-    // Panggil API untuk mengambil detail ingredients
+    // [UPDATE] Muat jumlah pesanan yang sudah ada di keranjang
+    _loadExistingQuantity();
+
+    _checkFavoriteStatus();
     _ingredientsFuture = _apiService.fetchMealDetails(widget.item['idMeal']);
   }
 
-  // [UPDATE] Fungsi untuk mengecek status favorit
+  // [NEW FUNCTION] Muat jumlah yang sudah ada di keranjang
+  void _loadExistingQuantity() {
+    final cartBox = Hive.box<CartItemModel>('cartBox');
+    final idMeal = widget.item['idMeal'];
+
+    final existingItem = cartBox.values.firstWhere(
+      (e) => e.idMeal == idMeal && e.userEmail == widget.currentUserEmail,
+      orElse: () => CartItemModel(
+        idMeal: '',
+        strMeal: '',
+        strMealThumb: '',
+        quantity: 0,
+        price: 0.0,
+        userEmail: '',
+      ),
+    );
+
+    if (existingItem.quantity > 0) {
+      // Jika ditemukan, set _quantity ke jumlah yang ada di keranjang
+      _quantity = existingItem.quantity;
+    } else {
+      // Jika tidak ditemukan, set ke 1 (nilai default pesanan baru)
+      _quantity = 1;
+    }
+  }
+
   void _checkFavoriteStatus() {
     if (widget.currentUserEmail.isEmpty) return;
 
     final favoriteBox = Hive.box<FavoriteModel>('favoriteBox');
     final idMeal = widget.item['idMeal'];
 
-    // Cek apakah ada item yang cocok dengan idMeal DAN email pengguna saat ini
     final isFav = favoriteBox.values.cast<FavoriteModel?>().any(
       (fav) =>
           fav != null &&
@@ -77,7 +101,6 @@ class _DetailPageState extends State<DetailPage> {
     });
   }
 
-  // [UPDATE] Fungsi untuk toggle status favorit
   void _toggleFavorite() async {
     if (widget.currentUserEmail.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -92,7 +115,6 @@ class _DetailPageState extends State<DetailPage> {
     final favoriteBox = Hive.box<FavoriteModel>('favoriteBox');
     final idMeal = widget.item['idMeal'] ?? UniqueKey().toString();
 
-    // Cari key item yang sudah ada
     final existingKey = favoriteBox.keys.cast<int?>().firstWhere((key) {
       final fav = favoriteBox.get(key);
       return fav != null &&
@@ -101,7 +123,6 @@ class _DetailPageState extends State<DetailPage> {
     }, orElse: () => null);
 
     if (_isFavorite && existingKey != null) {
-      // Hapus dari favorit
       await favoriteBox.delete(existingKey);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -110,7 +131,6 @@ class _DetailPageState extends State<DetailPage> {
         ),
       );
     } else {
-      // Tambahkan ke favorit
       final newItem = FavoriteModel(
         idMeal: idMeal,
         strMeal: widget.item['strMeal'] ?? 'Unknown Item',
@@ -140,19 +160,29 @@ class _DetailPageState extends State<DetailPage> {
       strMeal: widget.item['strMeal'] ?? 'Unknown Item',
       strMealThumb: widget.item['strMealThumb'] ?? '',
       quantity: _quantity,
-      price: _basePrice, // Gunakan basePrice agar harga per satuan benar
+      price: _basePrice, // Menggunakan _basePrice (harga satuan)
       userEmail: widget.currentUserEmail,
     );
 
-    final existingItemIndex = cartBox.values.toList().indexWhere(
+    // Dapatkan item yang sudah ada, menggunakan pencarian langsung di values (HiveObject)
+    final existingItem = cartBox.values.firstWhere(
       (e) => e.idMeal == newItem.idMeal && e.userEmail == newItem.userEmail,
+      orElse: () => CartItemModel(
+        idMeal: '',
+        strMeal: '',
+        strMealThumb: '',
+        quantity: 0,
+        price: 0.0,
+        userEmail: '',
+      ),
     );
 
-    if (existingItemIndex != -1) {
-      final existingItem = cartBox.getAt(existingItemIndex)!;
-      existingItem.quantity += _quantity;
+    if (existingItem.quantity > 0) {
+      // Jika item sudah ada, update quantity-nya ke nilai _quantity saat ini
+      existingItem.quantity = newItem.quantity;
       await existingItem.save();
     } else {
+      // Jika item baru, tambahkan
       await cartBox.add(newItem);
     }
 
@@ -189,7 +219,6 @@ class _DetailPageState extends State<DetailPage> {
       );
     }
 
-    // Format output ingredients
     final ingredientsList = ingredients.join(', ');
     final fullText =
         'Menu ini disajikan menggunakan ingredient: $ingredientsList. Menu yang Anda pilih siap disajikan dengan cepat dan nikmat!';
@@ -228,7 +257,6 @@ class _DetailPageState extends State<DetailPage> {
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
-          // [UPDATE] Tombol Favorit
           IconButton(
             onPressed: _toggleFavorite,
             icon: Container(
@@ -396,7 +424,7 @@ class _DetailPageState extends State<DetailPage> {
                                 ),
                                 const SizedBox(width: 10),
                                 Text(
-                                  'Add to Cart | Rp ${(_itemPrice * _quantity).toStringAsFixed(0)}',
+                                  'Add to Cart | Rp ${(_basePrice * _quantity).toStringAsFixed(0)}',
                                   style: const TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,
