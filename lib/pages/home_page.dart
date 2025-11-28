@@ -15,8 +15,6 @@ const Color darkPrimaryColor = Color(0xFF703B3B);
 const Color secondaryAccentColor = Color(0xFFA18D6D);
 const Color lightBackgroundColor = Color(0xFFE1D0B3);
 
-enum MenuFilter { all, makanan, minuman }
-
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -29,18 +27,20 @@ class _HomePageState extends State<HomePage> {
   String _userName = 'Pengguna';
   String _currentUserEmail = '';
   late Future<List<dynamic>> _menuFuture;
+  late Future<List<Map<String, dynamic>>> _categoriesFuture;
 
   final ApiService _apiService = ApiService();
   final LocationService _locationService = LocationService();
 
   String _searchQuery = '';
-  MenuFilter _currentFilter = MenuFilter.all;
+  String _currentFilter = 'Semua';
 
   @override
   void initState() {
     super.initState();
     _loadUserInfo();
     _menuFuture = _apiService.fetchMenu();
+    _categoriesFuture = _apiService.fetchCategories();
   }
 
   void _loadUserInfo() async {
@@ -108,6 +108,63 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // MARK: - Filter Kategori Dinamis
+  Widget _buildCategoryFilters() {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _categoriesFuture,
+      builder: (context, snapshot) {
+        List<String> categories = ['Semua'];
+        if (snapshot.hasData) {
+          categories.addAll(
+            snapshot.data!.map((e) => e['strCategory'] as String),
+          );
+        }
+
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: categories.map((category) {
+              return Padding(
+                padding: const EdgeInsets.only(right: 8.0),
+                child: _buildFilterChip(category),
+              );
+            }).toList(),
+          ),
+        );
+      },
+    );
+  }
+
+  // DEFINISI _buildFilterChip HANYA SATU KALI DI SINI
+  Widget _buildFilterChip(String label) {
+    bool isSelected = _currentFilter == label;
+    return ChoiceChip(
+      label: Text(label),
+      selected: isSelected,
+      selectedColor: darkPrimaryColor,
+      onSelected: (selected) {
+        if (selected) {
+          setState(() {
+            _currentFilter = label;
+          });
+        }
+      },
+      labelStyle: TextStyle(
+        color: isSelected ? Colors.white : darkPrimaryColor,
+        fontWeight: FontWeight.bold,
+      ),
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+        side: BorderSide(
+          color: isSelected
+              ? darkPrimaryColor
+              : secondaryAccentColor.withOpacity(0.5),
+        ),
+      ),
+    );
+  }
+
   Widget _buildMenuCatalog() {
     return Column(
       children: [
@@ -153,22 +210,7 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
               ),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children:
-                      [
-                        _buildFilterChip('Semua', MenuFilter.all),
-                        _buildFilterChip('Makanan', MenuFilter.makanan),
-                        _buildFilterChip('Minuman', MenuFilter.minuman),
-                      ].map((widget) {
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8.0),
-                          child: widget,
-                        );
-                      }).toList(),
-                ),
-              ),
+              _buildCategoryFilters(),
               const SizedBox(height: 15),
             ],
           ),
@@ -200,14 +242,14 @@ class _HomePageState extends State<HomePage> {
                   final bool matchesSearch = itemName.contains(
                     _searchQuery.toLowerCase(),
                   );
-                  final String itemType = itemMap['type']?.toLowerCase() ?? '';
+                  final String itemCategory = itemMap['type'] ?? '';
+
                   bool matchesFilter = true;
 
-                  if (_currentFilter == MenuFilter.makanan) {
-                    matchesFilter = itemType == 'makanan';
-                  } else if (_currentFilter == MenuFilter.minuman) {
-                    matchesFilter = itemType == 'minuman';
+                  if (_currentFilter != 'Semua') {
+                    matchesFilter = itemCategory == _currentFilter;
                   }
+
                   return matchesSearch && matchesFilter;
                 }).toList();
 
@@ -358,18 +400,16 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // MARK: - Modified Profile List Item Widget
+  // MARK: - Helper untuk List Item Profile
   Widget _buildProfileListItem({
     required IconData icon,
     required String title,
     required VoidCallback onTap,
   }) {
-    // Menghapus widget Container/Card luar
     return Column(
       children: [
         ListTile(
           onTap: onTap,
-          // Set warna background ListTile agar sama dengan background halaman
           tileColor: lightBackgroundColor,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 0,
@@ -381,13 +421,11 @@ class _HomePageState extends State<HomePage> {
             style: TextStyle(
               fontSize: 18,
               color: darkPrimaryColor,
-              // Font dibuat bold (w700)
               fontWeight: FontWeight.w700,
             ),
           ),
           trailing: Icon(Icons.chevron_right, color: secondaryAccentColor),
         ),
-        // Menggunakan Divider yang terpisah untuk kontrol yang lebih baik
         Divider(color: secondaryAccentColor.withOpacity(0.5), height: 1),
       ],
     );
@@ -484,8 +522,7 @@ class _HomePageState extends State<HomePage> {
 
                   const SizedBox(height: 20),
 
-                  // MARK: - List Style Implementation (tanpa background putih)
-                  // Menghilangkan Container dan Box Shadow agar menyatu dengan background lightBackgroundColor
+                  // MARK: - List Style Implementation (tanpa background putih luar)
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20.0),
                     child: Column(
@@ -502,6 +539,7 @@ class _HomePageState extends State<HomePage> {
                             );
                           },
                         ),
+
                         _buildProfileListItem(
                           icon: Icons.history,
                           title: 'Riwayat Pembelian',
@@ -535,35 +573,6 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFilterChip(String label, MenuFilter filter) {
-    bool isSelected = _currentFilter == filter;
-    return ChoiceChip(
-      label: Text(label),
-      selected: isSelected,
-      selectedColor: darkPrimaryColor,
-      onSelected: (selected) {
-        if (selected) {
-          setState(() {
-            _currentFilter = filter;
-          });
-        }
-      },
-      labelStyle: TextStyle(
-        color: isSelected ? Colors.white : darkPrimaryColor,
-        fontWeight: FontWeight.bold,
-      ),
-      backgroundColor: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-        side: BorderSide(
-          color: isSelected
-              ? darkPrimaryColor
-              : secondaryAccentColor.withOpacity(0.5),
         ),
       ),
     );

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/cart_item_model.dart';
+import '../services/api_service.dart'; // Import API Service
 
 const Color brownColor = Color(0xFF4E342E);
 const Color accentColor = Color(0xFFFFB300);
@@ -23,6 +24,10 @@ class DetailPage extends StatefulWidget {
 }
 
 class _DetailPageState extends State<DetailPage> {
+  final ApiService _apiService = ApiService(); // Inisialisasi ApiService
+  late Future<List<String>>
+  _ingredientsFuture; // Future untuk menampung data ingredients
+
   int _quantity = 1;
   late double _itemPrice;
   late double _basePrice;
@@ -41,6 +46,9 @@ class _DetailPageState extends State<DetailPage> {
       _basePrice = 0.0;
     }
     _itemPrice = _basePrice;
+
+    // Panggil API untuk mengambil detail ingredients
+    _ingredientsFuture = _apiService.fetchMealDetails(widget.item['idMeal']);
   }
 
   void _addToCart() async {
@@ -89,6 +97,25 @@ class _DetailPageState extends State<DetailPage> {
         icon: Icon(icon, color: darkPrimaryColor),
         onPressed: onPressed,
       ),
+    );
+  }
+
+  Widget _buildIngredientText(List<String> ingredients) {
+    if (ingredients.isEmpty || ingredients[0].startsWith('Gagal')) {
+      return Text(
+        'Informasi bahan-bahan tidak tersedia. Menu yang Anda pilih siap disajikan dengan cepat dan nikmat!',
+        style: const TextStyle(fontSize: 14, color: Colors.black87),
+      );
+    }
+
+    // Format output ingredients
+    final ingredientsList = ingredients.join(', ');
+    final fullText =
+        'Menu ini disajikan menggunakan ingredient: $ingredientsList. Menu yang Anda pilih siap disajikan dengan cepat dan nikmat!';
+
+    return Text(
+      fullText,
+      style: const TextStyle(fontSize: 14, color: Colors.black87),
     );
   }
 
@@ -218,12 +245,32 @@ class _DetailPageState extends State<DetailPage> {
 
                   Expanded(
                     child: SingleChildScrollView(
-                      child: Text(
-                        'Aplikasi ini adalah tugas akhir Pemrograman Aplikasi Mobile (PAM). Menu yang ditampilkan berasal dari API TheMealDB dan data statis. Harga yang tertera adalah harga simulasi. Menu yang Anda pilih siap disajikan dengan cepat dan nikmat!',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Colors.black87,
-                        ),
+                      // Menggunakan FutureBuilder untuk menampilkan ingredients
+                      child: FutureBuilder<List<String>>(
+                        future: _ingredientsFuture,
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return Center(
+                              child: CircularProgressIndicator(
+                                color: darkPrimaryColor,
+                              ),
+                            );
+                          } else if (snapshot.hasError) {
+                            return _buildIngredientText([
+                              'Gagal memuat bahan-bahan: ${snapshot.error}',
+                            ]);
+                          } else if (snapshot.hasData) {
+                            return _buildIngredientText(snapshot.data!);
+                          }
+                          return const Text(
+                            'Memuat detail menu...',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.black87,
+                            ),
+                          );
+                        },
                       ),
                     ),
                   ),
