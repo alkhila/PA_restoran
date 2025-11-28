@@ -10,6 +10,8 @@ import 'detail_page.dart';
 import 'login_page.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'checkout_detail_page.dart';
+import 'favorite_page.dart';
+import '../models/favorite_model.dart';
 
 const Color darkPrimaryColor = Color.fromARGB(255, 66, 37, 37);
 const Color secondaryAccentColor = Color.fromARGB(255, 104, 91, 70);
@@ -23,6 +25,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  // Index 0: Home, 1: Favorite, 2: Jelajah, 3: Keranjang, 4: Profil
   int _selectedIndex = 0;
   String _userName = 'Pengguna';
   String _currentUserEmail = '';
@@ -106,6 +109,55 @@ class _HomePageState extends State<HomePage> {
             DetailPage(item: item, currentUserEmail: _currentUserEmail),
       ),
     );
+  }
+
+  void _toggleFavoriteFromHome(Map<String, dynamic> item) async {
+    if (_currentUserEmail.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Mohon login untuk menggunakan fitur favorit.'),
+        ),
+      );
+      return;
+    }
+
+    final favoriteBox = Hive.box<FavoriteModel>('favoriteBox');
+    final idMeal = item['idMeal'] ?? UniqueKey().toString();
+    final itemName = item['strMeal'] ?? 'Unknown Item';
+
+    final existingKey = favoriteBox.keys.cast<int?>().firstWhere((key) {
+      final fav = favoriteBox.get(key);
+      return fav != null &&
+          fav.idMeal == idMeal &&
+          fav.userEmail == _currentUserEmail;
+    }, orElse: () => null);
+
+    bool isCurrentlyFavorite = existingKey != null;
+
+    if (isCurrentlyFavorite) {
+      await favoriteBox.delete(existingKey);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$itemName dihapus dari Favorit.'),
+          backgroundColor: darkPrimaryColor,
+        ),
+      );
+    } else {
+      final newItem = FavoriteModel(
+        idMeal: idMeal,
+        strMeal: itemName,
+        strMealThumb: item['strMealThumb'] ?? '',
+        price: (item['price'] as num?)?.toDouble() ?? 0.0,
+        userEmail: _currentUserEmail,
+      );
+      await favoriteBox.add(newItem);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$itemName ditambahkan ke Favorit!'),
+          backgroundColor: darkPrimaryColor,
+        ),
+      );
+    }
   }
 
   // MARK: - Filter Kategori Dinamis
@@ -302,22 +354,67 @@ class _HomePageState extends State<HomePage> {
                           children: [
                             Expanded(
                               flex: 2,
-                              child: ClipRRect(
-                                borderRadius: const BorderRadius.vertical(
-                                  top: Radius.circular(15),
-                                ),
-                                child: isLocalAsset
-                                    ? Image.asset(
-                                        item['strMealThumb'],
-                                        fit: BoxFit.cover,
-                                        width: double.infinity,
-                                      )
-                                    : Image.network(
-                                        item['strMealThumb'] ??
-                                            'https://via.placeholder.com/150',
-                                        fit: BoxFit.cover,
-                                        width: double.infinity,
-                                      ),
+                              child: Stack(
+                                children: [
+                                  ClipRRect(
+                                    borderRadius: const BorderRadius.vertical(
+                                      top: Radius.circular(15),
+                                    ),
+                                    child: isLocalAsset
+                                        ? Image.asset(
+                                            item['strMealThumb'],
+                                            fit: BoxFit.cover,
+                                            width: double.infinity,
+                                          )
+                                        : Image.network(
+                                            item['strMealThumb'] ??
+                                                'https://via.placeholder.com/150',
+                                            fit: BoxFit.cover,
+                                            width: double.infinity,
+                                          ),
+                                  ),
+                                  // Tombol Favorit di pojok KANAN ATAS
+                                  Positioned(
+                                    top: 10,
+                                    right:
+                                        10, // [UPDATE] Ganti dari 'left' menjadi 'right'
+                                    child: ValueListenableBuilder(
+                                      valueListenable: Hive.box<FavoriteModel>(
+                                        'favoriteBox',
+                                      ).listenable(),
+                                      builder: (context, box, _) {
+                                        final isFav = box.values.any(
+                                          (fav) =>
+                                              fav.idMeal == item['idMeal'] &&
+                                              fav.userEmail ==
+                                                  _currentUserEmail,
+                                        );
+                                        return GestureDetector(
+                                          onTap: () =>
+                                              _toggleFavoriteFromHome(item),
+                                          child: Container(
+                                            padding: const EdgeInsets.all(5),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withOpacity(
+                                                0.8,
+                                              ),
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: Icon(
+                                              isFav
+                                                  ? Icons.favorite
+                                                  : Icons.favorite_border,
+                                              color: isFav
+                                                  ? Colors.red
+                                                  : darkPrimaryColor,
+                                              size: 20,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                             Expanded(
@@ -361,6 +458,7 @@ class _HomePageState extends State<HomePage> {
                                             fontSize: 14,
                                           ),
                                         ),
+                                        // Tombol Add to Cart
                                         Container(
                                           padding: const EdgeInsets.all(5),
                                           decoration: BoxDecoration(
@@ -429,6 +527,19 @@ class _HomePageState extends State<HomePage> {
         Divider(color: secondaryAccentColor.withOpacity(0.5), height: 1),
       ],
     );
+  }
+
+  // Widget untuk setiap halaman Bottom Navigation
+  Widget _buildFavoritePage() {
+    return const FavoritePage();
+  }
+
+  Widget _buildCartPage() {
+    return const CartPage();
+  }
+
+  Widget _buildLBSPage() {
+    return const LBSPage();
   }
 
   Widget _buildProfilePage() {
@@ -522,7 +633,7 @@ class _HomePageState extends State<HomePage> {
 
                   const SizedBox(height: 20),
 
-                  // MARK: - List Style Implementation (tanpa background putih luar)
+                  // MARK: - List Style Implementation (Menu Profil)
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20.0),
                     child: Column(
@@ -539,7 +650,6 @@ class _HomePageState extends State<HomePage> {
                             );
                           },
                         ),
-
                         _buildProfileListItem(
                           icon: Icons.history,
                           title: 'Riwayat Pembelian',
@@ -578,21 +688,15 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildCartPage() {
-    return const CartPage();
-  }
-
-  Widget _buildLBSPage() {
-    return const LBSPage();
-  }
-
   @override
   Widget build(BuildContext context) {
+    // List Widget Options (5 item)
     final List<Widget> widgetOptions = <Widget>[
-      _buildMenuCatalog(),
-      _buildLBSPage(),
-      _buildCartPage(),
-      _buildProfilePage(),
+      _buildMenuCatalog(), // Index 0: Home
+      _buildFavoritePage(), // Index 1: Favorite
+      _buildLBSPage(), // Index 2: Jelajah (LBS)
+      _buildCartPage(), // Index 3: Keranjang
+      _buildProfilePage(), // Index 4: Profil
     ];
 
     return Scaffold(
@@ -623,6 +727,7 @@ class _HomePageState extends State<HomePage> {
       ),
       body: widgetOptions.elementAt(_selectedIndex),
 
+      // Bottom Navigation Bar (5 item)
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
@@ -630,16 +735,25 @@ class _HomePageState extends State<HomePage> {
             icon: Icon(Icons.home),
             backgroundColor: lightBackgroundColor,
           ),
+          // Tab Favorit (Index 1)
+          BottomNavigationBarItem(
+            label: 'Favorit',
+            icon: Icon(Icons.favorite),
+            backgroundColor: lightBackgroundColor,
+          ),
+          // Tab Jelajah (LBS) (Index 2)
           BottomNavigationBarItem(
             label: 'Jelajah',
             icon: Icon(Icons.location_on),
             backgroundColor: lightBackgroundColor,
           ),
+          // Tab Keranjang
           BottomNavigationBarItem(
             label: 'Keranjang',
             icon: Icon(Icons.shopping_cart),
             backgroundColor: lightBackgroundColor,
           ),
+          // Tab Profil
           BottomNavigationBarItem(
             label: 'Profil',
             icon: Icon(Icons.person),

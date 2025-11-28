@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/cart_item_model.dart';
+import '../models/favorite_model.dart'; // [UPDATE] Import Favorite Model
 import '../services/api_service.dart'; // Import API Service
 
 const Color brownColor = Color(0xFF4E342E);
@@ -31,6 +32,7 @@ class _DetailPageState extends State<DetailPage> {
   int _quantity = 1;
   late double _itemPrice;
   late double _basePrice;
+  bool _isFavorite = false; // [UPDATE] State untuk favorit
 
   @override
   void initState() {
@@ -42,13 +44,92 @@ class _DetailPageState extends State<DetailPage> {
       _basePrice = priceData;
     } else if (priceData is int) {
       _basePrice = priceData.toDouble();
+    } else if (priceData is num) {
+      // Handle num types
+      _basePrice = priceData.toDouble();
     } else {
       _basePrice = 0.0;
     }
     _itemPrice = _basePrice;
 
+    _checkFavoriteStatus(); // [UPDATE] Cek status favorit
     // Panggil API untuk mengambil detail ingredients
     _ingredientsFuture = _apiService.fetchMealDetails(widget.item['idMeal']);
+  }
+
+  // [UPDATE] Fungsi untuk mengecek status favorit
+  void _checkFavoriteStatus() {
+    if (widget.currentUserEmail.isEmpty) return;
+
+    final favoriteBox = Hive.box<FavoriteModel>('favoriteBox');
+    final idMeal = widget.item['idMeal'];
+
+    // Cek apakah ada item yang cocok dengan idMeal DAN email pengguna saat ini
+    final isFav = favoriteBox.values.cast<FavoriteModel?>().any(
+      (fav) =>
+          fav != null &&
+          fav.idMeal == idMeal &&
+          fav.userEmail == widget.currentUserEmail,
+    );
+
+    setState(() {
+      _isFavorite = isFav;
+    });
+  }
+
+  // [UPDATE] Fungsi untuk toggle status favorit
+  void _toggleFavorite() async {
+    if (widget.currentUserEmail.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Mohon login untuk menggunakan fitur favorit.'),
+          backgroundColor: darkPrimaryColor,
+        ),
+      );
+      return;
+    }
+
+    final favoriteBox = Hive.box<FavoriteModel>('favoriteBox');
+    final idMeal = widget.item['idMeal'] ?? UniqueKey().toString();
+
+    // Cari key item yang sudah ada
+    final existingKey = favoriteBox.keys.cast<int?>().firstWhere((key) {
+      final fav = favoriteBox.get(key);
+      return fav != null &&
+          fav.idMeal == idMeal &&
+          fav.userEmail == widget.currentUserEmail;
+    }, orElse: () => null);
+
+    if (_isFavorite && existingKey != null) {
+      // Hapus dari favorit
+      await favoriteBox.delete(existingKey);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${widget.item['strMeal']} dihapus dari Favorit.'),
+          backgroundColor: darkPrimaryColor,
+        ),
+      );
+    } else {
+      // Tambahkan ke favorit
+      final newItem = FavoriteModel(
+        idMeal: idMeal,
+        strMeal: widget.item['strMeal'] ?? 'Unknown Item',
+        strMealThumb: widget.item['strMealThumb'] ?? '',
+        price: _basePrice,
+        userEmail: widget.currentUserEmail,
+      );
+      await favoriteBox.add(newItem);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${widget.item['strMeal']} ditambahkan ke Favorit!'),
+          backgroundColor: darkPrimaryColor,
+        ),
+      );
+    }
+
+    setState(() {
+      _isFavorite = !_isFavorite;
+    });
   }
 
   void _addToCart() async {
@@ -59,7 +140,7 @@ class _DetailPageState extends State<DetailPage> {
       strMeal: widget.item['strMeal'] ?? 'Unknown Item',
       strMealThumb: widget.item['strMealThumb'] ?? '',
       quantity: _quantity,
-      price: _itemPrice,
+      price: _basePrice, // Gunakan basePrice agar harga per satuan benar
       userEmail: widget.currentUserEmail,
     );
 
@@ -146,6 +227,23 @@ class _DetailPageState extends State<DetailPage> {
           ),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          // [UPDATE] Tombol Favorit
+          IconButton(
+            onPressed: _toggleFavorite,
+            icon: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.5),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                _isFavorite ? Icons.favorite : Icons.favorite_border,
+                color: _isFavorite ? Colors.red : Colors.white,
+              ),
+            ),
+          ),
+        ],
       ),
       body: Stack(
         children: [

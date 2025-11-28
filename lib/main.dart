@@ -8,6 +8,7 @@ import 'pages/register_page.dart';
 import 'pages/home_page.dart';
 import 'models/cart_item_model.dart';
 import 'models/purchase_history_model.dart';
+import 'models/favorite_model.dart'; // [UPDATE] Tambahkan import ini
 
 const Color accentColor = Color(0xFFFFB300);
 
@@ -18,10 +19,12 @@ void main() async {
   Hive.registerAdapter(UserModelAdapter());
   Hive.registerAdapter(CartItemModelAdapter());
   Hive.registerAdapter(PurchaseHistoryModelAdapter());
+  Hive.registerAdapter(FavoriteModelAdapter()); // [UPDATE] Daftarkan Adapter
 
   await Hive.openBox<UserModel>('userBox');
   await Hive.openBox<CartItemModel>('cartBox');
   await Hive.openBox<PurchaseHistoryModel>('historyBox');
+  await Hive.openBox<FavoriteModel>('favoriteBox'); // [UPDATE] Buka Box Favorit
 
   await NotificationService().init();
 
