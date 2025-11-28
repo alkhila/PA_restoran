@@ -34,7 +34,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'FastFood App TA',
+      title: 'Restaurant App',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(primarySwatch: Colors.brown, fontFamily: 'Roboto'),
       home: FutureBuilder<bool>(
