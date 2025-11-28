@@ -6,9 +6,9 @@ import 'dart:convert';
 import '../models/user_model.dart';
 import 'home_page.dart';
 
-const Color primaryColor = Color(0xFF703B3B);
-const Color secondaryColor = Color(0xFFA18D6D);
-const Color backgroundColor = Color(0xFFE1D0B3);
+const Color primaryColor = Color.fromARGB(255, 66, 37, 37);
+const Color secondaryColor = Color.fromARGB(255, 104, 91, 70);
+const Color backgroundColor = Color.fromARGB(255, 231, 222, 206);
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});

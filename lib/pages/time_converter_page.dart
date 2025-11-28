@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'dart:async';
 
-const Color darkPrimaryColor = Color(0xFF703B3B);
-const Color secondaryAccentColor = Color(0xFFA18D6D);
-const Color lightBackgroundColor = Color(0xFFE1D0B3);
+const Color darkPrimaryColor = Color.fromARGB(255, 66, 37, 37);
+const Color secondaryAccentColor = Color.fromARGB(255, 104, 91, 70);
+const Color lightBackgroundColor = Color.fromARGB(255, 231, 222, 206);
 
 class TimeConverterPage extends StatefulWidget {
   const TimeConverterPage({super.key});

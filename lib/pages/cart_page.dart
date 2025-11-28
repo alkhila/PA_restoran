@@ -4,9 +4,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/cart_item_model.dart';
 import 'checkout_detail_page.dart';
 
-const Color darkPrimaryColor = Color(0xFF703B3B);
-const Color secondaryAccentColor = Color(0xFFA18D6D);
-const Color lightBackgroundColor = Color(0xFFE1D0B3);
+const Color darkPrimaryColor = Color.fromARGB(255, 66, 37, 37);
+const Color secondaryAccentColor = Color.fromARGB(255, 104, 91, 70);
+const Color lightBackgroundColor = Color.fromARGB(255, 231, 222, 206);
 
 class _CartItemInteractive extends StatefulWidget {
   final CartItemModel item;

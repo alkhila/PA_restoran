@@ -5,9 +5,9 @@ import '../services/api_service.dart'; // Import API Service
 
 const Color brownColor = Color(0xFF4E342E);
 const Color accentColor = Color(0xFFFFB300);
-const Color darkPrimaryColor = Color(0xFF703B3B);
-const Color secondaryAccentColor = Color(0xFFA18D6D);
-const Color lightBackgroundColor = Color(0xFFE1D0B3);
+const Color darkPrimaryColor = Color.fromARGB(255, 66, 37, 37);
+const Color secondaryAccentColor = Color.fromARGB(255, 104, 91, 70);
+const Color lightBackgroundColor = Color.fromARGB(255, 231, 222, 206);
 
 class DetailPage extends StatefulWidget {
   final Map<String, dynamic> item;

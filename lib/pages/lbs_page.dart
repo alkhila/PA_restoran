@@ -6,7 +6,7 @@ import '../services/location_service.dart';
 
 const Color brownColor = Color(0xFF4E342E);
 const Color accentColor = Color(0xFFFFB300);
-const Color darkPrimaryColor = Color(0xFF703B3B);
+const Color darkPrimaryColor = Color.fromARGB(255, 66, 37, 37);
 
 // Daftar cabang
 final List<Map<String, dynamic>> branches = [
