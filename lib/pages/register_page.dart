@@ -6,7 +6,7 @@ import '../models/user_model.dart';
 import '../services/notification_service.dart';
 
 const Color primaryColor = Color.fromARGB(255, 66, 37, 37);
-const Color secondaryColor = Color.fromARGB(255, 104, 91, 70);
+const Color secondaryColor = Color.fromARGB(255, 141, 129, 107);
 const Color backgroundColor = Color.fromARGB(255, 231, 222, 206);
 
 class RegisterPage extends StatefulWidget {
@@ -16,6 +16,8 @@ class RegisterPage extends StatefulWidget {
   State<RegisterPage> createState() => _RegisterPageState();
 }
 
+enum _PasswordField { password, confirmPassword }
+
 class _RegisterPageState extends State<RegisterPage> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
@@ -24,6 +26,18 @@ class _RegisterPageState extends State<RegisterPage> {
       TextEditingController();
 
   bool _isLoading = false;
+
+  bool _isPasswordVisible = false;
+  bool _isConfirmPasswordVisible = false;
+
+  bool _isEmailValid(String email) {
+    return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
+  }
+
+  // MARK: - Penambahan: Fungsi validasi panjang password
+  bool _isPasswordLengthValid(String password) {
+    return password.length >= 6;
+  }
 
   String _hashPassword(String password) {
     final bytes = utf8.encode(password);
@@ -44,6 +58,21 @@ class _RegisterPageState extends State<RegisterPage> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Semua kolom harus diisi!')));
+      return;
+    }
+
+    if (!_isEmailValid(email)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Format Email tidak valid.')),
+      );
+      return;
+    }
+
+    // MARK: - Penambahan: Validasi panjang password
+    if (!_isPasswordLengthValid(password)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Kata Sandi minimal 6 karakter.')),
+      );
       return;
     }
 
@@ -122,7 +151,19 @@ class _RegisterPageState extends State<RegisterPage> {
     required String label,
     required IconData icon,
     bool obscureText = false,
+    _PasswordField? passwordFieldType,
   }) {
+    bool isPasswordToggleable = passwordFieldType != null;
+    bool currentObscureText = obscureText;
+
+    if (isPasswordToggleable) {
+      if (passwordFieldType == _PasswordField.password) {
+        currentObscureText = !_isPasswordVisible;
+      } else if (passwordFieldType == _PasswordField.confirmPassword) {
+        currentObscureText = !_isConfirmPasswordVisible;
+      }
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -136,7 +177,7 @@ class _RegisterPageState extends State<RegisterPage> {
         const SizedBox(height: 5),
         TextField(
           controller: controller,
-          obscureText: obscureText,
+          obscureText: currentObscureText,
           style: TextStyle(color: primaryColor),
           decoration: InputDecoration(
             isDense: true,
@@ -147,6 +188,29 @@ class _RegisterPageState extends State<RegisterPage> {
             focusedBorder: UnderlineInputBorder(
               borderSide: BorderSide(color: primaryColor, width: 2),
             ),
+            suffixIcon: isPasswordToggleable
+                ? IconButton(
+                    icon: Icon(
+                      (passwordFieldType == _PasswordField.password
+                              ? _isPasswordVisible
+                              : _isConfirmPasswordVisible)
+                          ? Icons.visibility
+                          : Icons.visibility_off,
+                      color: primaryColor.withOpacity(0.7),
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        if (passwordFieldType == _PasswordField.password) {
+                          _isPasswordVisible = !_isPasswordVisible;
+                        } else if (passwordFieldType ==
+                            _PasswordField.confirmPassword) {
+                          _isConfirmPasswordVisible =
+                              !_isConfirmPasswordVisible;
+                        }
+                      });
+                    },
+                  )
+                : null,
           ),
         ),
       ],
@@ -287,14 +351,14 @@ class _RegisterPageState extends State<RegisterPage> {
                     controller: _passwordController,
                     label: 'Kata Sandi',
                     icon: Icons.lock_outline,
-                    obscureText: true,
+                    passwordFieldType: _PasswordField.password,
                   ),
                   const SizedBox(height: 20),
                   _buildTextField(
                     controller: _confirmPasswordController,
                     label: 'Konfirmasi Kata Sandi',
                     icon: Icons.lock_reset,
-                    obscureText: true,
+                    passwordFieldType: _PasswordField.confirmPassword,
                   ),
                   const SizedBox(height: 40),
                   _buildActionButton(

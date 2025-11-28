@@ -4,10 +4,9 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:crypto/crypto.dart';
 import 'dart:convert';
 import '../models/user_model.dart';
-import 'home_page.dart';
 
 const Color primaryColor = Color.fromARGB(255, 66, 37, 37);
-const Color secondaryColor = Color.fromARGB(255, 104, 91, 70);
+const Color secondaryColor = Color.fromARGB(255, 141, 129, 107);
 const Color backgroundColor = Color.fromARGB(255, 231, 222, 206);
 
 class LoginPage extends StatefulWidget {
@@ -20,6 +19,17 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+
+  bool _isPasswordVisible = false;
+
+  bool _isEmailValid(String email) {
+    return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
+  }
+
+  // MARK: - Penambahan: Fungsi validasi panjang password
+  bool _isPasswordLengthValid(String password) {
+    return password.length >= 6;
+  }
 
   String _hashPassword(String password) {
     final bytes = utf8.encode(password);
@@ -34,6 +44,21 @@ class _LoginPageState extends State<LoginPage> {
     if (email.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Email dan Kata Sandi harus diisi!')),
+      );
+      return;
+    }
+
+    if (!_isEmailValid(email)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Format Email tidak valid.')),
+      );
+      return;
+    }
+
+    // MARK: - Penambahan: Validasi panjang password
+    if (!_isPasswordLengthValid(password)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Kata Sandi minimal 6 karakter.')),
       );
       return;
     }
@@ -92,6 +117,7 @@ class _LoginPageState extends State<LoginPage> {
     required String label,
     required IconData icon,
     bool obscureText = false,
+    bool isPasswordToggleable = false,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -106,7 +132,7 @@ class _LoginPageState extends State<LoginPage> {
         const SizedBox(height: 5),
         TextField(
           controller: controller,
-          obscureText: obscureText,
+          obscureText: isPasswordToggleable ? !_isPasswordVisible : obscureText,
           style: TextStyle(color: primaryColor),
           decoration: InputDecoration(
             isDense: true,
@@ -117,6 +143,21 @@ class _LoginPageState extends State<LoginPage> {
             focusedBorder: UnderlineInputBorder(
               borderSide: BorderSide(color: primaryColor, width: 2),
             ),
+            suffixIcon: isPasswordToggleable
+                ? IconButton(
+                    icon: Icon(
+                      _isPasswordVisible
+                          ? Icons.visibility
+                          : Icons.visibility_off,
+                      color: primaryColor.withOpacity(0.7),
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _isPasswordVisible = !_isPasswordVisible;
+                      });
+                    },
+                  )
+                : null,
           ),
         ),
       ],
@@ -244,7 +285,7 @@ class _LoginPageState extends State<LoginPage> {
                     controller: _passwordController,
                     label: 'Kata Sandi',
                     icon: Icons.lock_outline,
-                    obscureText: true,
+                    isPasswordToggleable: true,
                   ),
                   const SizedBox(height: 170),
                   _buildActionButton(
