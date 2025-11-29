@@ -197,19 +197,6 @@ class _CartPageState extends State<CartPage> {
 
     return Scaffold(
       backgroundColor: lightBackgroundColor,
-      appBar: AppBar(
-        backgroundColor: lightBackgroundColor,
-        elevation: 0,
-        title: Text(
-          'Cart',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: darkPrimaryColor,
-          ),
-        ),
-        centerTitle: true,
-        actions: const [],
-      ),
       body: ValueListenableBuilder(
         valueListenable: Hive.box<CartItemModel>('cartBox').listenable(),
         builder: (context, Box<CartItemModel> box, _) {

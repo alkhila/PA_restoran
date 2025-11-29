@@ -102,7 +102,7 @@ class _FavoritePageState extends State<FavoritePage> {
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
-              childAspectRatio: 0.8,
+              childAspectRatio: 0.7,
               crossAxisSpacing: 15,
               mainAxisSpacing: 15,
             ),
@@ -205,7 +205,7 @@ class _FavoritePageState extends State<FavoritePage> {
                                 overflow: TextOverflow.ellipsis,
                               ),
                               const SizedBox(
-                                height: 20,
+                                height: 14,
                               ), // [UPDATE] Tambahkan jarak kecil
                               Row(
                                 mainAxisAlignment:
